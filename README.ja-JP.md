@@ -319,6 +319,7 @@ AI を開発ワークフローに統合できます。エージェントを使�
 │   ├── i18n/                # ローカライズリソース
 │   └── types/               # TypeScript 型定義
 ├── tests/
+│   ├── e2e/                 # Playwright による Electron E2E スモークテスト
 │   └── unit/                # Vitest ユニット/統合寄りテスト
 ├── resources/                # 静的アセット（アイコン、画像）
 └── scripts/                  # ビルド/ユーティリティスクリプト
@@ -336,6 +337,8 @@ pnpm typecheck            # TypeScriptの型チェック
 
 # テスト
 pnpm test                 # ユニットテストを実行
+pnpm run test:e2e         # Electron E2E スモークテストを実行
+pnpm run test:e2e:headed  # 表示付きウィンドウで Electron E2E を実行
 pnpm run comms:replay     # 通信リプレイ指標を算出
 pnpm run comms:baseline   # 通信ベースラインを更新
 pnpm run comms:compare    # リプレイ指標をベースライン閾値と比較
@@ -348,6 +351,8 @@ pnpm package:mac          # macOS向けにパッケージ化
 pnpm package:win          # Windows向けにパッケージ化
 pnpm package:linux        # Linux向けにパッケージ化
 ```
+
+ヘッドレス Linux では Electron テストに表示サーバーが必要です。`xvfb-run -a pnpm run test:e2e` を利用してください。
 
 ### 通信回帰チェック
 

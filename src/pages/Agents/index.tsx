@@ -123,6 +123,7 @@ export function Agents() {
     deleteAgent,
   } = useAgentsStore();
   const [channelGroups, setChannelGroups] = useState<ChannelGroupItem[]>([]);
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(() => agents.length > 0);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
@@ -133,7 +134,7 @@ export function Agents() {
       const response = await hostApiFetch<{ success: boolean; channels?: ChannelGroupItem[] }>('/api/channels/accounts');
       setChannelGroups(response.channels || []);
     } catch {
-      setChannelGroups([]);
+      // Keep the last rendered snapshot when channel account refresh fails.
     }
   }, []);
 
@@ -174,11 +175,15 @@ export function Agents() {
     () => agents.find((agent) => agent.id === activeAgentId) ?? null,
     [activeAgentId, agents],
   );
+
+  const visibleAgents = agents;
+  const visibleChannelGroups = channelGroups;
+  const isUsingStableValue = loading && hasCompletedInitialLoad;
   const handleRefresh = () => {
     void Promise.all([fetchAgents(), fetchDefaultAvatarOptions(), fetchChannelAccounts()]);
   };
 
-  if (loading) {
+  if (loading && !hasCompletedInitialLoad) {
     return (
       <div className="flex flex-col -m-6 dark:bg-background min-h-[calc(100vh-2.5rem)] items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -187,7 +192,7 @@ export function Agents() {
   }
 
   return (
-    <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
+    <div data-testid="agents-page" className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
           <div>
@@ -205,7 +210,7 @@ export function Agents() {
               onClick={handleRefresh}
               className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground transition-colors"
             >
-              <RefreshCw className="h-3.5 w-3.5 mr-2" />
+              <RefreshCw className={cn('h-3.5 w-3.5 mr-2', isUsingStableValue && 'animate-spin')} />
               {t('refresh')}
             </Button>
             <Button
@@ -238,11 +243,11 @@ export function Agents() {
           )}
 
           <div className="space-y-3">
-            {agents.map((agent) => (
+            {visibleAgents.map((agent) => (
               <AgentCard
                 key={agent.id}
                 agent={agent}
-                channelGroups={channelGroups}
+                channelGroups={visibleChannelGroups}
                 onOpenSettings={() => setActiveAgentId(agent.id)}
                 onDelete={() => setAgentToDelete(agent)}
               />
@@ -467,87 +472,87 @@ function AddAgentDialog({
     <>
       <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-2xl font-serif font-normal tracking-tight">
-            {t('createDialog.title')}
-          </CardTitle>
-          <CardDescription className="text-[15px] mt-1 text-foreground/70">
-            {t('createDialog.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-4 p-6">
-          <div className="space-y-2.5">
-            <Label htmlFor="agent-name" className={labelClasses}>{t('createDialog.nameLabel')}</Label>
-            <Input
-              id="agent-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t('createDialog.namePlaceholder')}
-              className={inputClasses}
-            />
-          </div>
-          <div className="space-y-2.5">
-            <Label className={labelClasses}>{t('createDialog.avatarLabel')}</Label>
-            <p className="text-[13px] text-foreground/60">{t('createDialog.avatarDescription')}</p>
-            <AgentAvatarPicker
-              avatars={defaultAvatarOptions}
-              value={effectiveAvatarSelection}
-              customPreviewSrc={customAvatarPreview}
-              customLabel={t('createDialog.customAvatar')}
-              onSelectDefault={(avatarId) => {
-                setAvatarSelection({ kind: 'default', avatarId });
-              }}
-              onSelectCustom={openCustomPicker}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                setCropFile(file);
-                event.currentTarget.value = '';
-              }}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="inherit-workspace" className={labelClasses}>{t('createDialog.inheritWorkspaceLabel')}</Label>
-              <p className="text-[13px] text-foreground/60">{t('createDialog.inheritWorkspaceDescription')}</p>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-serif font-normal tracking-tight">
+              {t('createDialog.title')}
+            </CardTitle>
+            <CardDescription className="text-[15px] mt-1 text-foreground/70">
+              {t('createDialog.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-4 p-6">
+            <div className="space-y-2.5">
+              <Label htmlFor="agent-name" className={labelClasses}>{t('createDialog.nameLabel')}</Label>
+              <Input
+                id="agent-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t('createDialog.namePlaceholder')}
+                className={inputClasses}
+              />
             </div>
-            <Switch
-              id="inherit-workspace"
-              checked={inheritWorkspace}
-              onCheckedChange={setInheritWorkspace}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
-            >
-              {t('common:actions.cancel')}
-            </Button>
-            <Button
-              onClick={() => void handleSubmit()}
-              disabled={saving || !name.trim()}
-              className="h-9 text-[13px] font-medium rounded-full px-4 shadow-none"
-            >
-              {saving ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  {t('creating')}
-                </>
-              ) : (
-                t('common:actions.save')
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-2.5">
+              <Label className={labelClasses}>{t('createDialog.avatarLabel')}</Label>
+              <p className="text-[13px] text-foreground/60">{t('createDialog.avatarDescription')}</p>
+              <AgentAvatarPicker
+                avatars={defaultAvatarOptions}
+                value={effectiveAvatarSelection}
+                customPreviewSrc={customAvatarPreview}
+                customLabel={t('createDialog.customAvatar')}
+                onSelectDefault={(avatarId) => {
+                  setAvatarSelection({ kind: 'default', avatarId });
+                }}
+                onSelectCustom={openCustomPicker}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setCropFile(file);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="inherit-workspace" className={labelClasses}>{t('createDialog.inheritWorkspaceLabel')}</Label>
+                <p className="text-[13px] text-foreground/60">{t('createDialog.inheritWorkspaceDescription')}</p>
+              </div>
+              <Switch
+                id="inherit-workspace"
+                checked={inheritWorkspace}
+                onCheckedChange={setInheritWorkspace}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
+              >
+                {t('common:actions.cancel')}
+              </Button>
+              <Button
+                onClick={() => void handleSubmit()}
+                disabled={saving || !name.trim()}
+                className="h-9 text-[13px] font-medium rounded-full px-4 shadow-none"
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    {t('creating')}
+                  </>
+                ) : (
+                  t('common:actions.save')
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       {cropFile && (
         <AgentAvatarCropDialog
@@ -623,6 +628,16 @@ function AgentSettingsModal({
     setCustomAvatarPreview(agent.avatar?.kind === 'custom' ? agent.avatar.thumbSrc : null);
   }, [agent.avatar, agent.name]);
 
+  const hasNameChanges = name.trim() !== agent.name;
+
+  const handleRequestClose = () => {
+    if (savingName || hasNameChanges) {
+      setShowCloseConfirm(true);
+      return;
+    }
+    onClose();
+  };
+
   const handleSaveName = async () => {
     const avatarChanged = avatarSelection?.kind !== agent.avatar?.kind || avatarSelection?.avatarId !== agent.avatar?.avatarId;
     if ((!name.trim() || name.trim() === agent.name) && !avatarChanged) return;
@@ -673,7 +688,7 @@ function AgentSettingsModal({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
           >
             <X className="h-4 w-4" />
@@ -840,46 +855,48 @@ function AgentSettingsModal({
           onClose={() => setShowModelModal(false)}
         />
       )}
-      {cropFile && (
-        <AgentAvatarCropDialog
-          file={cropFile}
-          title={t('cropDialog.title')}
-          description={t('cropDialog.description')}
-          zoomLabel={t('cropDialog.zoomLabel')}
-          cancelLabel={t('common:actions.cancel')}
-          reselectLabel={t('cropDialog.reselect')}
-          applyLabel={t('cropDialog.apply')}
-          dragHint={t('cropDialog.dragHint')}
-          onClose={() => setCropFile(null)}
-          onReselect={() => {
-            setCropFile(null);
-            setTimeout(() => openCustomPicker(), 0);
-          }}
-          onApply={async (result) => {
-            const response = await hostApiFetch<{
-              success?: boolean;
-              avatar?: AgentAvatarSummary;
-            }>('/api/files/agent-avatar', {
-              method: 'POST',
-              body: JSON.stringify({
-                base64: result.base64,
-                fileName: result.fileName,
-                mimeType: result.mimeType,
-              }),
-            });
-            if (!response.avatar) {
-              throw new Error('Avatar upload failed');
-            }
-            setAvatarSelection({
-              kind: 'custom',
-              avatarId: response.avatar.avatarId,
-            });
-            setCustomAvatarPreview(response.avatar.thumbSrc);
-            setCropFile(null);
-          }}
-        />
-      )}
-    </div>
+      {
+        cropFile && (
+          <AgentAvatarCropDialog
+            file={cropFile}
+            title={t('cropDialog.title')}
+            description={t('cropDialog.description')}
+            zoomLabel={t('cropDialog.zoomLabel')}
+            cancelLabel={t('common:actions.cancel')}
+            reselectLabel={t('cropDialog.reselect')}
+            applyLabel={t('cropDialog.apply')}
+            dragHint={t('cropDialog.dragHint')}
+            onClose={() => setCropFile(null)}
+            onReselect={() => {
+              setCropFile(null);
+              setTimeout(() => openCustomPicker(), 0);
+            }}
+            onApply={async (result) => {
+              const response = await hostApiFetch<{
+                success?: boolean;
+                avatar?: AgentAvatarSummary;
+              }>('/api/files/agent-avatar', {
+                method: 'POST',
+                body: JSON.stringify({
+                  base64: result.base64,
+                  fileName: result.fileName,
+                  mimeType: result.mimeType,
+                }),
+              });
+              if (!response.avatar) {
+                throw new Error('Avatar upload failed');
+              }
+              setAvatarSelection({
+                kind: 'custom',
+                avatarId: response.avatar.avatarId,
+              });
+              setCustomAvatarPreview(response.avatar.thumbSrc);
+              setCropFile(null);
+            }}
+          />
+        )
+      }
+    </div >
   );
 }
 
@@ -899,6 +916,7 @@ function AgentModelModal({
   const [selectedRuntimeProviderKey, setSelectedRuntimeProviderKey] = useState('');
   const [modelIdInput, setModelIdInput] = useState('');
   const [savingModel, setSavingModel] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const runtimeProviderOptions = useMemo<RuntimeProviderOption[]>(() => {
     const vendorMap = new Map<string, ProviderVendorInfo>(providerVendors.map((vendor) => [vendor.id, vendor]));
@@ -967,6 +985,14 @@ function AgentModelModal({
     : null;
   const modelChanged = (desiredOverrideModelRef || '') !== currentOverrideModelRef;
 
+  const handleRequestClose = () => {
+    if (savingModel || modelChanged) {
+      setShowCloseConfirm(true);
+      return;
+    }
+    onClose();
+  };
+
   const handleSaveModel = async () => {
     if (!selectedRuntimeProviderKey) {
       toast.error(t('toast.agentModelProviderRequired'));
@@ -1020,7 +1046,7 @@ function AgentModelModal({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
           >
             <X className="h-4 w-4" />
@@ -1081,7 +1107,7 @@ function AgentModelModal({
             </Button>
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleRequestClose}
               className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
             >
               {t('common:actions.cancel')}
@@ -1100,6 +1126,18 @@ function AgentModelModal({
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={showCloseConfirm}
+        title={t('settingsDialog.unsavedChangesTitle')}
+        message={t('settingsDialog.unsavedChangesMessage')}
+        confirmLabel={t('settingsDialog.closeWithoutSaving')}
+        cancelLabel={t('common:actions.cancel')}
+        onConfirm={() => {
+          setShowCloseConfirm(false);
+          onClose();
+        }}
+        onCancel={() => setShowCloseConfirm(false)}
+      />
     </div>
   );
 }
