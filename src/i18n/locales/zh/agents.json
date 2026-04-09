@@ -17,6 +17,9 @@
         "description": "输入名称即可创建新 Agent，可选择是否继承主 Agent 的工作区引导文件。",
         "nameLabel": "Agent 名称",
         "namePlaceholder": "Coding Helper",
+        "avatarLabel": "Agent 头像",
+        "avatarDescription": "选择默认龙虾头像，或上传自定义头像。",
+        "customAvatar": "自定义",
         "inheritWorkspaceLabel": "继承主 Agent 工作区",
         "inheritWorkspaceDescription": "从主 Agent 复制 SOUL.md、AGENTS.md 等引导文件"
     },
@@ -28,6 +31,9 @@
         "title": "{{name}} 设置",
         "description": "更新 Agent 名称，并管理哪些频道归属于这个 Agent。",
         "nameLabel": "Agent 名称",
+        "avatarLabel": "Agent 头像",
+        "avatarDescription": "名称和头像会一起保存。",
+        "identityDescription": "这个身份会显示在聊天回复和会话历史中。",
         "agentIdLabel": "Agent ID",
         "modelLabel": "Model",
         "modelOverrideLabel": "模型覆盖",
@@ -70,5 +76,13 @@
         "channelAssignFailed": "分配频道失败：{{error}}",
         "channelRemoved": "{{channel}} 已移除",
         "channelRemoveFailed": "移除频道失败：{{error}}"
+    },
+    "cropDialog": {
+        "title": "裁剪头像",
+        "description": "拖动图片调整位置，并通过缩放裁出圆形头像。",
+        "zoomLabel": "缩放",
+        "reselect": "重新选择图片",
+        "apply": "应用头像",
+        "dragHint": "拖动图片调整裁剪位置。"
     }
 }

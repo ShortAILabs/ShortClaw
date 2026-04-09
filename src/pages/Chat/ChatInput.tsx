@@ -10,6 +10,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { SendHorizontal, Square, X, Paperclip, FileText, Film, Music, FileArchive, File, Loader2, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar } from '@/components/ui/avatar';
 import { hostApiFetch } from '@/lib/host-api';
 import { invokeIpc } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -623,13 +624,21 @@ function AgentPickerItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full flex-col items-start rounded-xl px-3 py-2 text-left transition-colors',
+        'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors',
         selected ? 'bg-primary/10 text-foreground' : 'hover:bg-black/5 dark:hover:bg-white/5'
       )}
     >
-      <span className="text-[14px] font-medium text-foreground">{agent.name}</span>
-      <span className="text-[11px] text-muted-foreground">
-        {agent.modelDisplay}
+      <Avatar
+        src={agent.avatar?.thumbSrc ?? agent.avatar?.src ?? null}
+        name={agent.name}
+        size={28}
+        className="border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5"
+      />
+      <span className="min-w-0 flex flex-1 flex-col items-start">
+        <span className="text-[14px] font-medium text-foreground">{agent.name}</span>
+        <span className="text-[11px] text-muted-foreground">
+          {agent.modelDisplay}
+        </span>
       </span>
     </button>
   );

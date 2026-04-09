@@ -42,7 +42,7 @@ import {
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { useTranslation } from 'react-i18next';
-import logoSvg from '@/assets/logo.svg';
+import logoImage from '@/assets/logo-mirrored.webp';
 
 type SessionBucketKey =
   | 'today'
@@ -221,8 +221,17 @@ export function Sidebar() {
     return unsubscribe;
   }, [fetchUserProfile]);
 
-  const agentNameById = useMemo(
-    () => Object.fromEntries((agents ?? []).map((agent) => [agent.id, agent.name])),
+  const agentMetaById = useMemo(
+    () =>
+      Object.fromEntries(
+        (agents ?? []).map((agent) => [
+          agent.id,
+          {
+            name: agent.name,
+            avatarSrc: agent.avatar?.thumbSrc ?? agent.avatar?.src ?? null,
+          },
+        ]),
+      ),
     [agents]
   );
   const sessionBuckets: Array<{ key: SessionBucketKey; label: string; sessions: typeof sessions }> =
@@ -294,7 +303,7 @@ export function Sidebar() {
       >
         {!sidebarCollapsed && (
           <div className="flex items-center gap-2 px-2 overflow-hidden">
-            <img src={logoSvg} alt="ShortClaw" className="h-5 w-auto shrink-0" />
+            <img src={logoImage} alt="ShortClaw" className="h-5 w-auto shrink-0" />
             <span className="text-sm font-semibold truncate whitespace-nowrap text-foreground/90">
               ShortClaw
             </span>
@@ -354,7 +363,8 @@ export function Sidebar() {
                 </div>
                 {bucket.sessions.map((s) => {
                   const agentId = getAgentIdFromSessionKey(s.key);
-                  const agentName = agentNameById[agentId] || agentId;
+                  const agentMeta = agentMetaById[agentId];
+                  const agentName = agentMeta?.name || agentId;
                   return (
                     <div key={s.key} className="group relative flex items-center">
                       <button
@@ -371,11 +381,17 @@ export function Sidebar() {
                         )}
                       >
                         <div className="flex min-w-0 items-center gap-2">
-                          <span className="shrink-0 rounded-full bg-black/[0.04] px-2 py-0.5 text-[10px] font-medium text-foreground/70 dark:bg-white/[0.08]">
-                            {agentName}
-                          </span>
-                          <span className="truncate">
+                          <Avatar
+                            src={agentMeta?.avatarSrc ?? null}
+                            name={agentName}
+                            size={20}
+                            className="shrink-0 bg-black/[0.04] dark:bg-white/[0.08]"
+                          />
+                          <span className="truncate flex-1">
                             {getSessionLabel(s.key, s.displayName, s.label)}
+                          </span>
+                          <span className="shrink-0 text-[10px] font-medium text-foreground/55">
+                            {agentName}
                           </span>
                         </div>
                       </button>

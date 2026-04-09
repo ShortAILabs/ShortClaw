@@ -4,12 +4,17 @@ import {
   clearChannelBinding,
   createAgent,
   deleteAgentConfig,
+  updateAgentProfile,
   listAgentsSnapshot,
   removeAgentWorkspaceDirectory,
   resolveAccountIdForAgent,
   updateAgentModel,
-  updateAgentName,
 } from '../../utils/agent-config';
+import {
+  getRecommendedDefaultAvatarId,
+  listDefaultAvatarSummaries,
+  type AgentAvatarSelection,
+} from '../../utils/agent-avatar-profile';
 import { deleteChannelAccountConfig } from '../../utils/channel-config';
 import { syncAgentModelOverrideToRuntime, syncAllProviderAuthToRuntime } from '../../services/providers/provider-runtime-sync';
 import type { HostApiContext } from '../context';
@@ -116,10 +121,26 @@ export async function handleAgentRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/agents/avatar-options' && req.method === 'GET') {
+    sendJson(res, 200, {
+      success: true,
+      avatars: await listDefaultAvatarSummaries(),
+      recommendedAvatarId: await getRecommendedDefaultAvatarId(),
+    });
+    return true;
+  }
+
   if (url.pathname === '/api/agents' && req.method === 'POST') {
     try {
-      const body = await parseJsonBody<{ name: string; inheritWorkspace?: boolean }>(req);
-      const snapshot = await createAgent(body.name, { inheritWorkspace: body.inheritWorkspace });
+      const body = await parseJsonBody<{
+        name: string;
+        inheritWorkspace?: boolean;
+        avatarSelection?: AgentAvatarSelection;
+      }>(req);
+      const snapshot = await createAgent(body.name, {
+        inheritWorkspace: body.inheritWorkspace,
+        avatarSelection: body.avatarSelection,
+      });
       // Sync provider API keys to the new agent's auth-profiles.json so the
       // embedded runner can authenticate with LLM providers when messages
       // arrive via channel bots (e.g. Feishu). Without this, the copied
@@ -141,9 +162,12 @@ export async function handleAgentRoutes(
 
     if (parts.length === 1) {
       try {
-        const body = await parseJsonBody<{ name: string }>(req);
+        const body = await parseJsonBody<{ name: string; avatarSelection?: AgentAvatarSelection }>(req);
         const agentId = decodeURIComponent(parts[0]);
-        const snapshot = await updateAgentName(agentId, body.name);
+        const snapshot = await updateAgentProfile(agentId, {
+          name: body.name,
+          avatarSelection: body.avatarSelection,
+        });
         scheduleGatewayReload(ctx, 'update-agent');
         sendJson(res, 200, { success: true, ...snapshot });
       } catch (error) {

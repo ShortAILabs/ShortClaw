@@ -4,11 +4,12 @@
  * with markdown, thinking sections, images, and tool cards.
  */
 import { useState, useCallback, useEffect, memo } from 'react';
-import { Sparkles, Copy, Check, ChevronDown, ChevronRight, Wrench, FileText, Film, Music, FileArchive, File, X, FolderOpen, ZoomIn, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronRight, Wrench, FileText, Film, Music, FileArchive, File, X, FolderOpen, ZoomIn, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { invokeIpc } from '@/lib/api-client';
 import type { RawMessage, AttachedFileMeta } from '@/stores/chat';
@@ -17,6 +18,8 @@ import { extractText, extractThinking, extractImages, extractToolUse, formatTime
 interface ChatMessageProps {
   message: RawMessage;
   showThinking: boolean;
+  assistantAvatarSrc?: string | null;
+  assistantName?: string;
   isStreaming?: boolean;
   streamingTools?: Array<{
     id?: string;
@@ -40,6 +43,8 @@ function imageSrc(img: ExtractedImage): string | null {
 export const ChatMessage = memo(function ChatMessage({
   message,
   showThinking,
+  assistantAvatarSrc = null,
+  assistantName = 'Assistant',
   isStreaming = false,
   streamingTools = [],
 }: ChatMessageProps) {
@@ -72,9 +77,12 @@ export const ChatMessage = memo(function ChatMessage({
     >
       {/* Avatar */}
       {!isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-black/5 dark:bg-white/5 text-foreground">
-          <Sparkles className="h-4 w-4" />
-        </div>
+        <Avatar
+          src={assistantAvatarSrc}
+          name={assistantName}
+          size={32}
+          className="mt-1 bg-black/5 dark:bg-white/5 text-foreground"
+        />
       )}
 
       {/* Content */}

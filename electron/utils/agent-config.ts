@@ -6,6 +6,14 @@ import { withConfigLock } from './config-mutex';
 import { expandPath, getOpenClawConfigDir } from './paths';
 import * as logger from './logger';
 import { toUiChannelType } from './channel-alias';
+import {
+  ensureAvatarProfileForAgents,
+  removeAvatarProfileForAgent,
+  resolveAvatarSummaryForAgent,
+  saveAvatarSelectionForAgent,
+  type AgentAvatarSelection,
+  type AgentAvatarSummary,
+} from './agent-avatar-profile';
 
 const MAIN_AGENT_ID = 'main';
 const MAIN_AGENT_NAME = 'Main Agent';
@@ -90,6 +98,7 @@ export interface AgentSummary {
   channelTypes: string[];
   providerId?: string;
   emoji?: string;
+  avatar: AgentAvatarSummary | null;
 }
 
 export interface AgentsSnapshot {
@@ -454,6 +463,7 @@ function listConfiguredAccountIdsForChannel(config: AgentConfigDocument, channel
 
 async function buildSnapshotFromConfig(config: AgentConfigDocument): Promise<AgentsSnapshot> {
   const { entries, defaultAgentId } = normalizeAgentsConfig(config);
+  await ensureAvatarProfileForAgents(entries.map((entry) => entry.id));
   const configuredChannels = await listConfiguredChannels();
   const { channelToAgent, accountToAgent } = getChannelBindingMap(config.bindings);
   const defaultAgentIdNorm = normalizeAgentIdForBinding(defaultAgentId);
@@ -503,7 +513,7 @@ async function buildSnapshotFromConfig(config: AgentConfigDocument): Promise<Age
   const defaultModelConfig = (config.agents as AgentsConfig | undefined)?.defaults?.model;
   const defaultModelLabel = formatModelLabel(defaultModelConfig);
   const defaultModelRef = resolveModelRef(defaultModelConfig);
-  const agents: AgentSummary[] = entries.map((entry) => {
+  const agents: AgentSummary[] = await Promise.all(entries.map(async (entry) => {
     const explicitModelRef = resolveModelRef(entry.model);
     const modelLabel = formatModelLabel(entry.model) || defaultModelLabel || 'Not configured';
     const inheritedModel = !explicitModelRef && Boolean(defaultModelLabel);
@@ -525,8 +535,9 @@ async function buildSnapshotFromConfig(config: AgentConfigDocument): Promise<Age
         .map((channelType) => toUiChannelType(channelType)),
       providerId: explicitModelRef?.split('/')[0] || defaultModelRef?.split('/')[0] || undefined,
       emoji: entry.emoji as string | undefined,
+      avatar: await resolveAvatarSummaryForAgent(entry.id),
     };
-  });
+  }));
 
   return {
     agents,
@@ -552,7 +563,7 @@ export async function listConfiguredAgentIds(): Promise<string[]> {
 
 export async function createAgent(
   name: string,
-  options?: { inheritWorkspace?: boolean },
+  options?: { inheritWorkspace?: boolean; avatarSelection?: AgentAvatarSelection },
 ): Promise<AgentsSnapshot> {
   return withConfigLock(async () => {
     const config = await readOpenClawConfig() as AgentConfigDocument;
@@ -588,16 +599,24 @@ export async function createAgent(
 
     await provisionAgentFilesystem(config, newAgent, { inheritWorkspace: options?.inheritWorkspace });
     await writeOpenClawConfig(config);
+    await saveAvatarSelectionForAgent(nextId, options?.avatarSelection ?? null);
     logger.info('Created agent config entry', { agentId: nextId, inheritWorkspace: !!options?.inheritWorkspace });
     return buildSnapshotFromConfig(config);
   });
 }
 
 export async function updateAgentName(agentId: string, name: string): Promise<AgentsSnapshot> {
+  return updateAgentProfile(agentId, { name });
+}
+
+export async function updateAgentProfile(
+  agentId: string,
+  payload: { name: string; avatarSelection?: AgentAvatarSelection | null },
+): Promise<AgentsSnapshot> {
   return withConfigLock(async () => {
     const config = await readOpenClawConfig() as AgentConfigDocument;
     const { agentsConfig, entries } = normalizeAgentsConfig(config);
-    const normalizedName = normalizeAgentName(name);
+    const normalizedName = normalizeAgentName(payload.name);
     const index = entries.findIndex((entry) => entry.id === agentId);
     if (index === -1) {
       throw new Error(`Agent "${agentId}" not found`);
@@ -614,6 +633,9 @@ export async function updateAgentName(agentId: string, name: string): Promise<Ag
     };
 
     await writeOpenClawConfig(config);
+    if (payload.avatarSelection) {
+      await saveAvatarSelectionForAgent(agentId, payload.avatarSelection);
+    }
     logger.info('Updated agent name', { agentId, name: normalizedName });
     return buildSnapshotFromConfig(config);
   });
@@ -702,6 +724,7 @@ export async function deleteAgentConfig(agentId: string): Promise<{ snapshot: Ag
     await writeOpenClawConfig(config);
     await deleteAgentChannelAccounts(agentId, ownedLegacyAccounts);
     await removeAgentRuntimeDirectory(agentId);
+    await removeAvatarProfileForAgent(agentId);
     // NOTE: workspace directory is NOT deleted here intentionally.
     // The caller (route handler) defers workspace removal until after
     // the Gateway process has fully restarted, so that any in-flight

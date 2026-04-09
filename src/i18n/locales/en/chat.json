@@ -15,6 +15,7 @@
         "refresh": "Refresh chat",
         "showThinking": "Show thinking",
         "hideThinking": "Hide thinking",
+        "currentAgentLabel": "Talking to:",
         "currentAgent": "Talking to {{agent}}"
     },
     "composer": {

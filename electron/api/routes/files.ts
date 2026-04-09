@@ -5,6 +5,7 @@ import { extname, join } from 'node:path';
 import { homedir } from 'node:os';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
+import { stageCustomAvatarUpload } from '../../utils/agent-avatar-profile';
 
 const EXT_MIME_MAP: Record<string, string> = {
   '.png': 'image/png',
@@ -190,6 +191,30 @@ export async function handleFileRoutes(
         return true;
       }
       sendJson(res, 200, { success: true, savedPath: result.filePath });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/files/agent-avatar' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ base64: string; fileName?: string; mimeType?: string }>(req);
+      if (!body.base64) {
+        sendJson(res, 400, { success: false, error: 'No avatar image data provided' });
+        return true;
+      }
+      const avatarId = crypto.randomUUID();
+      const avatar = await stageCustomAvatarUpload({
+        avatarId,
+        base64: body.base64,
+      });
+      sendJson(res, 200, {
+        success: true,
+        avatar,
+        fileName: body.fileName || `${avatarId}.webp`,
+        mimeType: body.mimeType || 'image/webp',
+      });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }

@@ -1,59 +1,70 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next';
+
+import { cn } from '@/lib/utils';
+
+import { OFFICE_PANEL_CLASS, getOfficeChromeButtonClass } from './chrome';
 
 interface EditActionBarProps {
-  isDirty: boolean
-  canUndo: boolean
-  canRedo: boolean
-  onUndo: () => void
-  onRedo: () => void
-  onSave: () => void
-  onReset: () => void
+  isDirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onSave: () => void;
+  onReset: () => void;
 }
 
-const barBtnStyle: React.CSSProperties = {
-  padding: '3px 10px',
-  fontSize: '12px',
-  background: 'rgba(255, 255, 255, 0.08)',
-  color: 'rgba(255, 255, 255, 0.7)',
-  border: '2px solid #4a4a6a',
-  borderRadius: 0,
-  cursor: 'pointer',
-}
+export function EditActionBar({
+  isDirty,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onSave,
+  onReset,
+}: EditActionBarProps) {
+  const { t } = useTranslation();
 
-const disabledBtnStyle: React.CSSProperties = {
-  ...barBtnStyle,
-  opacity: 0.3,
-  cursor: 'default',
-}
+  if (!isDirty && !canUndo && !canRedo) return null;
 
-export function EditActionBar({ isDirty, canUndo, canRedo, onUndo, onRedo, onSave, onReset }: EditActionBarProps) {
-  const { t } = useTranslation()
-
-  if (!isDirty && !canUndo && !canRedo) return null
+  const buttonClass = getOfficeChromeButtonClass({ size: 'xs' });
 
   return (
-    <div style={{
-      position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 50,
-      background: '#1e1e2e', border: '2px solid #4a4a6a', borderRadius: 0,
-      padding: '4px 8px', display: 'flex', gap: 4,
-      boxShadow: '2px 2px 0px #0a0a14',
-    }}>
-      <button style={canUndo ? barBtnStyle : disabledBtnStyle} onClick={onUndo} disabled={!canUndo} title="Ctrl+Z">
+    <div
+      className={cn(
+        OFFICE_PANEL_CLASS,
+        'absolute left-1/2 top-3 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2'
+      )}
+    >
+      <button
+        className={buttonClass}
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Ctrl+Z"
+      >
         {t('pixelOffice.undo')}
       </button>
-      <button style={canRedo ? barBtnStyle : disabledBtnStyle} onClick={onRedo} disabled={!canRedo} title="Ctrl+Y">
+      <button
+        className={buttonClass}
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Ctrl+Y"
+      >
         {t('pixelOffice.redo')}
       </button>
       {isDirty && (
         <>
-          <button style={{ ...barBtnStyle, background: 'rgba(90, 140, 255, 0.25)', border: '2px solid #5a8cff' }} onClick={onSave}>
+          <button
+            className={getOfficeChromeButtonClass({ active: true, size: 'xs', shape: 'pill' })}
+            onClick={onSave}
+          >
             {t('pixelOffice.save')}
           </button>
-          <button style={barBtnStyle} onClick={onReset}>
+          <button className={buttonClass} onClick={onReset}>
             {t('pixelOffice.reset')}
           </button>
         </>
       )}
     </div>
-  )
+  );
 }

@@ -1,174 +1,243 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { EditTool } from '@/lib/pixel-office/types'
-import type { TileType as TileTypeVal, FloorColor } from '@/lib/pixel-office/types'
-import { getCatalogByCategory, getActiveCategories } from '@/lib/pixel-office/layout/furnitureCatalog'
-import type { FurnitureCategory } from '@/lib/pixel-office/layout/furnitureCatalog'
-import { getCachedSprite } from '@/lib/pixel-office/sprites/spriteCache'
-import { getColorizedFloorSprite, getFloorPatternCount, hasFloorSprites } from '@/lib/pixel-office/floorTiles'
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-const btnStyle: React.CSSProperties = {
-  padding: '3px 8px',
-  fontSize: '12px',
-  background: 'rgba(255, 255, 255, 0.08)',
-  color: 'rgba(255, 255, 255, 0.7)',
-  border: '2px solid transparent',
-  borderRadius: 0,
-  cursor: 'pointer',
-}
+import { cn } from '@/lib/utils';
+import { EditTool } from '@/lib/pixel-office/types';
+import type { TileType as TileTypeVal, FloorColor } from '@/lib/pixel-office/types';
+import { getCatalogByCategory, getActiveCategories } from '@/lib/pixel-office/layout/furnitureCatalog';
+import type { FurnitureCategory } from '@/lib/pixel-office/layout/furnitureCatalog';
+import { getCachedSprite } from '@/lib/pixel-office/sprites/spriteCache';
+import {
+  getColorizedFloorSprite,
+  getFloorPatternCount,
+  hasFloorSprites,
+} from '@/lib/pixel-office/floorTiles';
 
-const activeBtnStyle: React.CSSProperties = {
-  ...btnStyle,
-  background: 'rgba(90, 140, 255, 0.25)',
-  color: 'rgba(255, 255, 255, 0.9)',
-  border: '2px solid #5a8cff',
-}
+import {
+  OFFICE_INSET_PANEL_CLASS,
+  OFFICE_MUTED_TEXT_CLASS,
+  OFFICE_PANEL_CLASS,
+  getOfficeChromeButtonClass,
+} from './chrome';
 
-const tabStyle: React.CSSProperties = {
-  padding: '2px 6px',
-  fontSize: '11px',
-  background: 'transparent',
-  color: 'rgba(255, 255, 255, 0.5)',
-  border: '2px solid transparent',
-  borderRadius: 0,
-  cursor: 'pointer',
-}
-
-const activeTabStyle: React.CSSProperties = {
-  ...tabStyle,
-  background: 'rgba(255, 255, 255, 0.08)',
-  color: 'rgba(255, 255, 255, 0.8)',
-  border: '2px solid #5a8cff',
-}
-
-function FloorPatternPreview({ patternIndex, color, selected, onClick }: {
-  patternIndex: number
-  color: FloorColor
-  selected: boolean
-  onClick: () => void
+function FloorPatternPreview({
+  patternIndex,
+  color,
+  selected,
+  onClick,
+}: {
+  patternIndex: number;
+  color: FloorColor;
+  selected: boolean;
+  onClick: () => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const displaySize = 32
-  const tileZoom = 2
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const displaySize = 32;
+  const tileZoom = 2;
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    canvas.width = displaySize
-    canvas.height = displaySize
-    ctx.imageSmoothingEnabled = false
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    canvas.width = displaySize;
+    canvas.height = displaySize;
+    ctx.imageSmoothingEnabled = false;
     if (!hasFloorSprites()) {
-      ctx.fillStyle = '#444'
-      ctx.fillRect(0, 0, displaySize, displaySize)
-      return
+      ctx.fillStyle = '#444';
+      ctx.fillRect(0, 0, displaySize, displaySize);
+      return;
     }
-    const sprite = getColorizedFloorSprite(patternIndex, color)
-    const cached = getCachedSprite(sprite, tileZoom)
-    ctx.drawImage(cached, 0, 0)
-  }, [patternIndex, color])
+    const sprite = getColorizedFloorSprite(patternIndex, color);
+    const cached = getCachedSprite(sprite, tileZoom);
+    ctx.drawImage(cached, 0, 0);
+  }, [patternIndex, color]);
 
   return (
-    <button onClick={onClick} title={`Floor ${patternIndex}`} style={{
-      width: displaySize, height: displaySize, padding: 0,
-      border: selected ? '2px solid #5a8cff' : '2px solid #4a4a6a',
-      borderRadius: 0, cursor: 'pointer', overflow: 'hidden', flexShrink: 0, background: '#2A2A3A',
-    }}>
-      <canvas ref={canvasRef} style={{ width: displaySize, height: displaySize, display: 'block' }} />
+    <button
+      onClick={onClick}
+      title={`Floor ${patternIndex}`}
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-0 transition-colors',
+        'bg-black/[0.04] hover:bg-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09]',
+        selected
+          ? 'border-foreground/25 bg-black/[0.08] dark:bg-white/[0.12]'
+          : 'border-black/10 dark:border-white/10'
+      )}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{ width: displaySize, height: displaySize, display: 'block' }}
+      />
     </button>
-  )
+  );
 }
 
-function ColorSlider({ label, value, min, max, onChange }: {
-  label: string; value: number; min: number; max: number; onChange: (v: number) => void
+function ColorSlider({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontSize: '11px', color: '#999', width: 16, textAlign: 'right', flexShrink: 0 }}>{label}</span>
-      <input type="range" min={min} max={max} value={value}
+    <div className="flex items-center gap-2">
+      <span className={cn(OFFICE_MUTED_TEXT_CLASS, 'w-4 shrink-0 text-right text-[11px] font-medium')}>
+        {label}
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ flex: 1, height: 12, accentColor: 'rgba(90, 140, 255, 0.8)' }} />
-      <span style={{ fontSize: '11px', color: '#999', width: 32, textAlign: 'right', flexShrink: 0 }}>{value}</span>
+        className="h-3 flex-1 accent-[hsl(var(--primary))]"
+      />
+      <span className={cn(OFFICE_MUTED_TEXT_CLASS, 'w-8 shrink-0 text-right text-[11px] font-medium')}>
+        {value}
+      </span>
     </div>
-  )
+  );
 }
 
-const DEFAULT_FURNITURE_COLOR: FloorColor = { h: 0, s: 0, b: 0, c: 0 }
+const DEFAULT_FURNITURE_COLOR: FloorColor = { h: 0, s: 0, b: 0, c: 0 };
+
+const toolbarButtonClass = getOfficeChromeButtonClass({ size: 'xs' });
+const toolbarButtonActiveClass = getOfficeChromeButtonClass({
+  active: true,
+  size: 'xs',
+});
+const toolbarDangerButtonClass = getOfficeChromeButtonClass({
+  destructive: true,
+  size: 'xs',
+});
 
 interface EditorToolbarProps {
-  activeTool: EditTool
-  selectedTileType: TileTypeVal
-  selectedFurnitureType: string
-  selectedFurnitureUid: string | null
-  selectedFurnitureColor: FloorColor | null
-  floorColor: FloorColor
-  wallColor: FloorColor
-  onToolChange: (tool: EditTool) => void
-  onTileTypeChange: (type: TileTypeVal) => void
-  onFloorColorChange: (color: FloorColor) => void
-  onWallColorChange: (color: FloorColor) => void
-  onSelectedFurnitureColorChange: (color: FloorColor | null) => void
-  onFurnitureTypeChange: (type: string) => void
-  onDeleteFurniture: () => void
+  activeTool: EditTool;
+  selectedTileType: TileTypeVal;
+  selectedFurnitureType: string;
+  selectedFurnitureUid: string | null;
+  selectedFurnitureColor: FloorColor | null;
+  floorColor: FloorColor;
+  wallColor: FloorColor;
+  onToolChange: (tool: EditTool) => void;
+  onTileTypeChange: (type: TileTypeVal) => void;
+  onFloorColorChange: (color: FloorColor) => void;
+  onWallColorChange: (color: FloorColor) => void;
+  onSelectedFurnitureColorChange: (color: FloorColor | null) => void;
+  onFurnitureTypeChange: (type: string) => void;
+  onDeleteFurniture: () => void;
 }
 
 export function EditorToolbar({
-  activeTool, selectedTileType, selectedFurnitureType,
-  selectedFurnitureUid, selectedFurnitureColor,
-  floorColor, wallColor,
-  onToolChange, onTileTypeChange, onFloorColorChange, onWallColorChange,
-  onSelectedFurnitureColorChange, onFurnitureTypeChange, onDeleteFurniture,
+  activeTool,
+  selectedTileType,
+  selectedFurnitureType,
+  selectedFurnitureUid,
+  selectedFurnitureColor,
+  floorColor,
+  wallColor,
+  onToolChange,
+  onTileTypeChange,
+  onFloorColorChange,
+  onWallColorChange,
+  onSelectedFurnitureColorChange,
+  onFurnitureTypeChange,
+  onDeleteFurniture,
 }: EditorToolbarProps) {
-  const [activeCategory, setActiveCategory] = useState<FurnitureCategory>('desks')
-  const [showColor, setShowColor] = useState(false)
-  const [showWallColor, setShowWallColor] = useState(false)
-  const [showFurnitureColor, setShowFurnitureColor] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<FurnitureCategory>('desks');
+  const [showColor, setShowColor] = useState(false);
+  const [showWallColor, setShowWallColor] = useState(false);
+  const [showFurnitureColor, setShowFurnitureColor] = useState(false);
 
-  const handleColorChange = useCallback((key: keyof FloorColor, value: number) => {
-    onFloorColorChange({ ...floorColor, [key]: value })
-  }, [floorColor, onFloorColorChange])
+  const handleColorChange = useCallback(
+    (key: keyof FloorColor, value: number) => {
+      onFloorColorChange({ ...floorColor, [key]: value });
+    },
+    [floorColor, onFloorColorChange]
+  );
 
-  const handleWallColorChange = useCallback((key: keyof FloorColor, value: number) => {
-    onWallColorChange({ ...wallColor, [key]: value })
-  }, [wallColor, onWallColorChange])
+  const handleWallColorChange = useCallback(
+    (key: keyof FloorColor, value: number) => {
+      onWallColorChange({ ...wallColor, [key]: value });
+    },
+    [wallColor, onWallColorChange]
+  );
 
-  const effectiveColor = selectedFurnitureColor ?? DEFAULT_FURNITURE_COLOR
-  const handleSelFurnColorChange = useCallback((key: keyof FloorColor, value: number) => {
-    onSelectedFurnitureColorChange({ ...effectiveColor, [key]: value })
-  }, [effectiveColor, onSelectedFurnitureColorChange])
+  const effectiveColor = selectedFurnitureColor ?? DEFAULT_FURNITURE_COLOR;
+  const handleSelFurnColorChange = useCallback(
+    (key: keyof FloorColor, value: number) => {
+      onSelectedFurnitureColorChange({ ...effectiveColor, [key]: value });
+    },
+    [effectiveColor, onSelectedFurnitureColorChange]
+  );
 
-  const categoryItems = getCatalogByCategory(activeCategory)
-  const patternCount = getFloorPatternCount()
-  const floorPatterns = Array.from({ length: patternCount }, (_, i) => i + 1)
-  const thumbSize = 36
+  const categoryItems = getCatalogByCategory(activeCategory);
+  const patternCount = getFloorPatternCount();
+  const floorPatterns = Array.from({ length: patternCount }, (_, i) => i + 1);
+  const thumbSize = 36;
 
-  const isSelectActive = activeTool === EditTool.SELECT
-  const isFloorActive = activeTool === EditTool.TILE_PAINT || activeTool === EditTool.EYEDROPPER
-  const isWallActive = activeTool === EditTool.WALL_PAINT
-  const isEraseActive = activeTool === EditTool.ERASE
-  const isFurnitureActive = activeTool === EditTool.FURNITURE_PLACE || activeTool === EditTool.FURNITURE_PICK
+  const isSelectActive = activeTool === EditTool.SELECT;
+  const isFloorActive = activeTool === EditTool.TILE_PAINT || activeTool === EditTool.EYEDROPPER;
+  const isWallActive = activeTool === EditTool.WALL_PAINT;
+  const isEraseActive = activeTool === EditTool.ERASE;
+  const isFurnitureActive =
+    activeTool === EditTool.FURNITURE_PLACE || activeTool === EditTool.FURNITURE_PICK;
 
   return (
-    <div style={{
-      position: 'absolute', bottom: 12, left: 10, zIndex: 50,
-      background: '#1e1e2e', border: '2px solid #4a4a6a', borderRadius: 0,
-      padding: '6px 8px', display: 'flex', flexDirection: 'column-reverse', gap: 6,
-      boxShadow: '2px 2px 0px #0a0a14', maxWidth: 'calc(100vw - 20px)',
-    }}>
-      {/* Tool row */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        <button style={isSelectActive ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.SELECT)} title="Select / move furniture">Select</button>
-        <button style={isFloorActive ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.TILE_PAINT)} title="Paint floor tiles">Floor</button>
-        <button style={isWallActive ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.WALL_PAINT)} title="Paint walls">Wall</button>
-        <button style={isEraseActive ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.ERASE)} title="Erase tiles">Erase</button>
-        <button style={isFurnitureActive ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.FURNITURE_PLACE)} title="Place furniture">Furniture</button>
+    <div
+      className={cn(
+        OFFICE_PANEL_CLASS,
+        'absolute bottom-3 left-3 z-50 flex max-w-[min(calc(100vw-1.5rem),54rem)] flex-col-reverse gap-2 rounded-2xl p-3'
+      )}
+    >
+      <div className="flex flex-wrap gap-2">
+        <button
+          className={isSelectActive ? toolbarButtonActiveClass : toolbarButtonClass}
+          onClick={() => onToolChange(EditTool.SELECT)}
+          title="Select / move furniture"
+        >
+          Select
+        </button>
+        <button
+          className={isFloorActive ? toolbarButtonActiveClass : toolbarButtonClass}
+          onClick={() => onToolChange(EditTool.TILE_PAINT)}
+          title="Paint floor tiles"
+        >
+          Floor
+        </button>
+        <button
+          className={isWallActive ? toolbarButtonActiveClass : toolbarButtonClass}
+          onClick={() => onToolChange(EditTool.WALL_PAINT)}
+          title="Paint walls"
+        >
+          Wall
+        </button>
+        <button
+          className={isEraseActive ? toolbarButtonActiveClass : toolbarButtonClass}
+          onClick={() => onToolChange(EditTool.ERASE)}
+          title="Erase tiles"
+        >
+          Erase
+        </button>
+        <button
+          className={isFurnitureActive ? toolbarButtonActiveClass : toolbarButtonClass}
+          onClick={() => onToolChange(EditTool.FURNITURE_PLACE)}
+          title="Place furniture"
+        >
+          Furniture
+        </button>
       </div>
 
-      {/* Delete button when furniture is selected */}
       {selectedFurnitureUid && (
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="flex flex-wrap gap-2">
           <button
-            style={{ ...btnStyle, background: 'rgba(255, 80, 80, 0.2)', border: '2px solid #ff5050', color: '#ff9090' }}
+            className={toolbarDangerButtonClass}
             onClick={onDeleteFurniture}
             title="Delete selected furniture (Delete key)"
           >
@@ -177,119 +246,284 @@ export function EditorToolbar({
         </div>
       )}
 
-      {/* Floor sub-panel */}
       {isFloorActive && (
-        <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 6 }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button style={showColor ? activeBtnStyle : btnStyle} onClick={() => setShowColor(v => !v)} title="Adjust floor color">Color</button>
-            <button style={activeTool === EditTool.EYEDROPPER ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.EYEDROPPER)} title="Pick floor pattern + color">Pick</button>
+        <div className="flex flex-col-reverse gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className={showColor ? toolbarButtonActiveClass : toolbarButtonClass}
+              onClick={() => setShowColor((value) => !value)}
+              title="Adjust floor color"
+            >
+              Color
+            </button>
+            <button
+              className={
+                activeTool === EditTool.EYEDROPPER ? toolbarButtonActiveClass : toolbarButtonClass
+              }
+              onClick={() => onToolChange(EditTool.EYEDROPPER)}
+              title="Pick floor pattern + color"
+            >
+              Pick
+            </button>
           </div>
           {showColor && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '4px 6px', background: '#181828', border: '2px solid #4a4a6a', borderRadius: 0 }}>
-              <ColorSlider label="H" value={floorColor.h} min={0} max={360} onChange={v => handleColorChange('h', v)} />
-              <ColorSlider label="S" value={floorColor.s} min={0} max={100} onChange={v => handleColorChange('s', v)} />
-              <ColorSlider label="B" value={floorColor.b} min={-100} max={100} onChange={v => handleColorChange('b', v)} />
-              <ColorSlider label="C" value={floorColor.c} min={-100} max={100} onChange={v => handleColorChange('c', v)} />
+            <div className={cn(OFFICE_INSET_PANEL_CLASS, 'flex flex-col gap-2 p-3')}>
+              <ColorSlider
+                label="H"
+                value={floorColor.h}
+                min={0}
+                max={360}
+                onChange={(value) => handleColorChange('h', value)}
+              />
+              <ColorSlider
+                label="S"
+                value={floorColor.s}
+                min={0}
+                max={100}
+                onChange={(value) => handleColorChange('s', value)}
+              />
+              <ColorSlider
+                label="B"
+                value={floorColor.b}
+                min={-100}
+                max={100}
+                onChange={(value) => handleColorChange('b', value)}
+              />
+              <ColorSlider
+                label="C"
+                value={floorColor.c}
+                min={-100}
+                max={100}
+                onChange={(value) => handleColorChange('c', value)}
+              />
             </div>
           )}
-          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: 2 }}>
-            {floorPatterns.map(patIdx => (
-              <FloorPatternPreview key={patIdx} patternIndex={patIdx} color={floorColor} selected={selectedTileType === patIdx}
-                onClick={() => onTileTypeChange(patIdx as TileTypeVal)} />
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {floorPatterns.map((patternIndex) => (
+              <FloorPatternPreview
+                key={patternIndex}
+                patternIndex={patternIndex}
+                color={floorColor}
+                selected={selectedTileType === patternIndex}
+                onClick={() => onTileTypeChange(patternIndex as TileTypeVal)}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Wall sub-panel */}
       {isWallActive && (
-        <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 6 }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button style={showWallColor ? activeBtnStyle : btnStyle} onClick={() => setShowWallColor(v => !v)} title="Adjust wall color">Color</button>
+        <div className="flex flex-col-reverse gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className={showWallColor ? toolbarButtonActiveClass : toolbarButtonClass}
+              onClick={() => setShowWallColor((value) => !value)}
+              title="Adjust wall color"
+            >
+              Color
+            </button>
           </div>
           {showWallColor && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '4px 6px', background: '#181828', border: '2px solid #4a4a6a', borderRadius: 0 }}>
-              <ColorSlider label="H" value={wallColor.h} min={0} max={360} onChange={v => handleWallColorChange('h', v)} />
-              <ColorSlider label="S" value={wallColor.s} min={0} max={100} onChange={v => handleWallColorChange('s', v)} />
-              <ColorSlider label="B" value={wallColor.b} min={-100} max={100} onChange={v => handleWallColorChange('b', v)} />
-              <ColorSlider label="C" value={wallColor.c} min={-100} max={100} onChange={v => handleWallColorChange('c', v)} />
+            <div className={cn(OFFICE_INSET_PANEL_CLASS, 'flex flex-col gap-2 p-3')}>
+              <ColorSlider
+                label="H"
+                value={wallColor.h}
+                min={0}
+                max={360}
+                onChange={(value) => handleWallColorChange('h', value)}
+              />
+              <ColorSlider
+                label="S"
+                value={wallColor.s}
+                min={0}
+                max={100}
+                onChange={(value) => handleWallColorChange('s', value)}
+              />
+              <ColorSlider
+                label="B"
+                value={wallColor.b}
+                min={-100}
+                max={100}
+                onChange={(value) => handleWallColorChange('b', value)}
+              />
+              <ColorSlider
+                label="C"
+                value={wallColor.c}
+                min={-100}
+                max={100}
+                onChange={(value) => handleWallColorChange('c', value)}
+              />
             </div>
           )}
         </div>
       )}
 
-      {/* Furniture sub-panel */}
       {isFurnitureActive && (
-        <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 4 }}>
-          <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-            {getActiveCategories().map(cat => (
-              <button key={cat.id} style={activeCategory === cat.id ? activeTabStyle : tabStyle} onClick={() => setActiveCategory(cat.id)}>{cat.label}</button>
+        <div className="flex flex-col-reverse gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {getActiveCategories().map((category) => (
+              <button
+                key={category.id}
+                className={
+                  activeCategory === category.id ? toolbarButtonActiveClass : toolbarButtonClass
+                }
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.label}
+              </button>
             ))}
-            <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)', margin: '0 2px', flexShrink: 0 }} />
-            <button style={activeTool === EditTool.FURNITURE_PICK ? activeBtnStyle : btnStyle} onClick={() => onToolChange(EditTool.FURNITURE_PICK)} title="Pick furniture type">Pick</button>
+            <div className="mx-1 h-4 w-px shrink-0 bg-black/10 dark:bg-white/10" />
+            <button
+              className={
+                activeTool === EditTool.FURNITURE_PICK ? toolbarButtonActiveClass : toolbarButtonClass
+              }
+              onClick={() => onToolChange(EditTool.FURNITURE_PICK)}
+              title="Pick furniture type"
+            >
+              Pick
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: 2 }}>
-            {categoryItems.map(entry => {
-              const hasSprite = entry.sprite.length > 0
-              const isSelected = selectedFurnitureType === entry.type
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {categoryItems.map((entry) => {
+              const hasSprite = entry.sprite.length > 0;
+              const isSelected = selectedFurnitureType === entry.type;
               return (
-                <button key={entry.type} onClick={() => onFurnitureTypeChange(entry.type)} title={entry.label} style={{
-                  width: thumbSize, height: thumbSize, background: '#2A2A3A',
-                  border: isSelected ? '2px solid #5a8cff' : '2px solid #4a4a6a',
-                  borderRadius: 0, cursor: 'pointer', padding: 0, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-                  fontSize: hasSprite ? undefined : 20,
-                }}>
+                <button
+                  key={entry.type}
+                  onClick={() => onFurnitureTypeChange(entry.type)}
+                  title={entry.label}
+                  className={cn(
+                    'flex shrink-0 items-center justify-center overflow-hidden rounded-lg border p-0 transition-colors',
+                    'bg-black/[0.04] hover:bg-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09]',
+                    isSelected
+                      ? 'border-foreground/25 bg-black/[0.08] dark:bg-white/[0.12]'
+                      : 'border-black/10 dark:border-white/10'
+                  )}
+                  style={{ width: thumbSize, height: thumbSize, fontSize: hasSprite ? undefined : 20 }}
+                >
                   {hasSprite ? (
-                    <canvas ref={el => {
-                      if (!el) return
-                      const ctx = el.getContext('2d')
-                      if (!ctx) return
-                      const cached = getCachedSprite(entry.sprite, 2)
-                      const scale = Math.min(thumbSize / cached.width, thumbSize / cached.height) * 0.85
-                      el.width = thumbSize; el.height = thumbSize
-                      ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, thumbSize, thumbSize)
-                      const dw = cached.width * scale; const dh = cached.height * scale
-                      ctx.drawImage(cached, (thumbSize - dw) / 2, (thumbSize - dh) / 2, dw, dh)
-                    }} style={{ width: thumbSize, height: thumbSize }} />
+                    <canvas
+                      ref={(element) => {
+                        if (!element) return;
+                        const ctx = element.getContext('2d');
+                        if (!ctx) return;
+                        const cached = getCachedSprite(entry.sprite, 2);
+                        const scale =
+                          Math.min(thumbSize / cached.width, thumbSize / cached.height) * 0.85;
+                        element.width = thumbSize;
+                        element.height = thumbSize;
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.clearRect(0, 0, thumbSize, thumbSize);
+                        const drawWidth = cached.width * scale;
+                        const drawHeight = cached.height * scale;
+                        ctx.drawImage(
+                          cached,
+                          (thumbSize - drawWidth) / 2,
+                          (thumbSize - drawHeight) / 2,
+                          drawWidth,
+                          drawHeight
+                        );
+                      }}
+                      style={{ width: thumbSize, height: thumbSize }}
+                    />
                   ) : (
                     <span>{entry.emoji ?? '?'}</span>
                   )}
                 </button>
-              )
+              );
             })}
           </div>
         </div>
       )}
 
-      {/* Selected furniture color panel */}
       {selectedFurnitureUid && (
-        <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 3 }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button style={showFurnitureColor ? activeBtnStyle : btnStyle} onClick={() => setShowFurnitureColor(v => !v)} title="Adjust selected furniture color">Color</button>
+        <div className="flex flex-col-reverse gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className={showFurnitureColor ? toolbarButtonActiveClass : toolbarButtonClass}
+              onClick={() => setShowFurnitureColor((value) => !value)}
+              title="Adjust selected furniture color"
+            >
+              Color
+            </button>
             {selectedFurnitureColor && (
-              <button style={{ ...btnStyle, fontSize: '11px', padding: '2px 6px' }} onClick={() => onSelectedFurnitureColorChange(null)} title="Remove color">Clear</button>
+              <button
+                className={toolbarButtonClass}
+                onClick={() => onSelectedFurnitureColorChange(null)}
+                title="Remove color"
+              >
+                Clear
+              </button>
             )}
           </div>
           {showFurnitureColor && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '4px 6px', background: '#181828', border: '2px solid #4a4a6a', borderRadius: 0 }}>
+            <div className={cn(OFFICE_INSET_PANEL_CLASS, 'flex flex-col gap-2 p-3')}>
               {effectiveColor.colorize ? (
                 <>
-                  <ColorSlider label="H" value={effectiveColor.h} min={0} max={360} onChange={v => handleSelFurnColorChange('h', v)} />
-                  <ColorSlider label="S" value={effectiveColor.s} min={0} max={100} onChange={v => handleSelFurnColorChange('s', v)} />
+                  <ColorSlider
+                    label="H"
+                    value={effectiveColor.h}
+                    min={0}
+                    max={360}
+                    onChange={(value) => handleSelFurnColorChange('h', value)}
+                  />
+                  <ColorSlider
+                    label="S"
+                    value={effectiveColor.s}
+                    min={0}
+                    max={100}
+                    onChange={(value) => handleSelFurnColorChange('s', value)}
+                  />
                 </>
               ) : (
                 <>
-                  <ColorSlider label="H" value={effectiveColor.h} min={-180} max={180} onChange={v => handleSelFurnColorChange('h', v)} />
-                  <ColorSlider label="S" value={effectiveColor.s} min={-100} max={100} onChange={v => handleSelFurnColorChange('s', v)} />
+                  <ColorSlider
+                    label="H"
+                    value={effectiveColor.h}
+                    min={-180}
+                    max={180}
+                    onChange={(value) => handleSelFurnColorChange('h', value)}
+                  />
+                  <ColorSlider
+                    label="S"
+                    value={effectiveColor.s}
+                    min={-100}
+                    max={100}
+                    onChange={(value) => handleSelFurnColorChange('s', value)}
+                  />
                 </>
               )}
-              <ColorSlider label="B" value={effectiveColor.b} min={-100} max={100} onChange={v => handleSelFurnColorChange('b', v)} />
-              <ColorSlider label="C" value={effectiveColor.c} min={-100} max={100} onChange={v => handleSelFurnColorChange('c', v)} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '11px', color: '#999', cursor: 'pointer' }}>
-                <input type="checkbox" checked={!!effectiveColor.colorize}
-                  onChange={e => onSelectedFurnitureColorChange({ ...effectiveColor, colorize: e.target.checked || undefined })}
-                  style={{ accentColor: 'rgba(90, 140, 255, 0.8)' }} />
+              <ColorSlider
+                label="B"
+                value={effectiveColor.b}
+                min={-100}
+                max={100}
+                onChange={(value) => handleSelFurnColorChange('b', value)}
+              />
+              <ColorSlider
+                label="C"
+                value={effectiveColor.c}
+                min={-100}
+                max={100}
+                onChange={(value) => handleSelFurnColorChange('c', value)}
+              />
+              <label
+                className={cn(
+                  OFFICE_MUTED_TEXT_CLASS,
+                  'flex cursor-pointer items-center gap-2 text-[11px] font-medium'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!effectiveColor.colorize}
+                  onChange={(e) =>
+                    onSelectedFurnitureColorChange({
+                      ...effectiveColor,
+                      colorize: e.target.checked || undefined,
+                    })
+                  }
+                  className="accent-[hsl(var(--primary))]"
+                />
                 Colorize
               </label>
             </div>
@@ -297,5 +531,5 @@ export function EditorToolbar({
         </div>
       )}
     </div>
-  )
+  );
 }

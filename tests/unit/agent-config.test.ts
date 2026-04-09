@@ -102,6 +102,49 @@ describe('agent config lifecycle', () => {
     );
   });
 
+  it('assigns distinct default avatars to existing agents during migration', async () => {
+    await writeOpenClawJson({
+      agents: {
+        list: [
+          { id: 'main', name: 'Main', default: true },
+          { id: 'coder', name: 'Coder' },
+          { id: 'reviewer', name: 'Reviewer' },
+        ],
+      },
+    });
+
+    const { listAgentsSnapshot } = await import('@electron/utils/agent-config');
+    const snapshot = await listAgentsSnapshot();
+    const avatarIds = snapshot.agents.map((agent) => agent.avatar?.avatarId);
+
+    expect(avatarIds).toEqual([
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+    ]);
+    expect(new Set(avatarIds).size).toBe(3);
+  });
+
+  it('includes resolved avatar metadata in agent snapshots', async () => {
+    await writeOpenClawJson({
+      agents: {
+        list: [{ id: 'main', name: 'Main', default: true }],
+      },
+    });
+
+    const { listAgentsSnapshot } = await import('@electron/utils/agent-config');
+    const snapshot = await listAgentsSnapshot();
+
+    expect(snapshot.agents[0]).toMatchObject({
+      avatar: {
+        kind: expect.stringMatching(/default|custom/),
+        avatarId: expect.any(String),
+        src: expect.stringContaining('data:image/webp;base64,'),
+        thumbSrc: expect.stringContaining('data:image/webp;base64,'),
+      },
+    });
+  });
+
   it('exposes effective and override model refs in the snapshot', async () => {
     await writeOpenClawJson({
       agents: {
@@ -195,6 +238,65 @@ describe('agent config lifecycle', () => {
     await expect(updateAgentModel('main', 'invalid-model-ref')).rejects.toThrow(
       'modelRef must be in "provider/model" format',
     );
+  });
+
+  it('wraps the default avatar cursor when the pool is exhausted', async () => {
+    const { assignDefaultAvatarId } = await import('@electron/utils/agent-avatar-profile');
+
+    expect(assignDefaultAvatarId({ cursor: 0, avatarIds: ['a', 'b'] })).toEqual({
+      avatarId: 'a',
+      nextCursor: 1,
+    });
+    expect(assignDefaultAvatarId({ cursor: 1, avatarIds: ['a', 'b'] })).toEqual({
+      avatarId: 'b',
+      nextCursor: 0,
+    });
+  });
+
+  it('uses an explicit default avatar selection when creating an agent', async () => {
+    await writeOpenClawJson({
+      agents: {
+        list: [{ id: 'main', name: 'Main', default: true }],
+      },
+    });
+
+    const manifest = await import('../../resources/agent-avatars/default/manifest.json');
+    const defaultAvatarId = manifest.default.avatars[2]?.avatarId ?? manifest.default.avatars[0].avatarId;
+    const { createAgent, listAgentsSnapshot } = await import('@electron/utils/agent-config');
+
+    await createAgent('Planner', {
+      inheritWorkspace: false,
+      avatarSelection: { kind: 'default', avatarId: defaultAvatarId },
+    });
+
+    const snapshot = await listAgentsSnapshot();
+    const planner = snapshot.agents.find((agent) => agent.name === 'Planner');
+    expect(planner?.avatar?.avatarId).toBe(defaultAvatarId);
+  });
+
+  it('updates name and avatar together for an existing agent', async () => {
+    await writeOpenClawJson({
+      agents: {
+        list: [{ id: 'main', name: 'Main', default: true }],
+      },
+    });
+
+    const manifest = await import('../../resources/agent-avatars/default/manifest.json');
+    const defaultAvatarId = manifest.default.avatars[1]?.avatarId ?? manifest.default.avatars[0].avatarId;
+    const { listAgentsSnapshot, updateAgentProfile } = await import('@electron/utils/agent-config');
+
+    await updateAgentProfile('main', {
+      name: 'Main Desk',
+      avatarSelection: { kind: 'default', avatarId: defaultAvatarId },
+    });
+
+    const snapshot = await listAgentsSnapshot();
+    expect(snapshot.agents.find((agent) => agent.id === 'main')).toMatchObject({
+      name: 'Main Desk',
+      avatar: {
+        avatarId: defaultAvatarId,
+      },
+    });
   });
 
   it('deletes the config entry, bindings, runtime directory, and managed workspace for a removed agent', async () => {

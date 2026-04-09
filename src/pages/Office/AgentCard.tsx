@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from 'react';
+
+import { cn } from '@/lib/utils';
+
+import {
+  OFFICE_INSET_PANEL_CLASS,
+  getOfficeChromeButtonClass,
+} from './chrome';
 
 function buildGatewayUrl(port: number, path: string, params: Record<string, string>, host?: string): string {
   const base = host || `http://localhost:${port}`;
@@ -174,38 +181,45 @@ function PlatformBadge({
     feishu: {
       remoteLogoSrc: "https://cdn.simpleicons.org/lark/2E5BFF",
       logoFallbackSrc: "/assets/platform-logos/feishu-favicon.png?v=1",
-      badgeStyle: "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/40 hover:border-blue-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
       logoSizeClass: "w-[1.09375rem] h-[1.09375rem]",
     },
     yuanbao: {
       remoteLogoSrc: "https://cdn-hybrid-prod.hunyuan.tencent.com/manual/favicon.png",
       logoFallbackSrc: "/assets/platform-logos/yuanbao-favicon.png?v=1",
-      badgeStyle: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/40 hover:border-cyan-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
     discord: {
       remoteLogoSrc: "https://cdn.simpleicons.org/discord/5865F2",
       logoFallbackSrc: "/assets/platform-logos/discord.svg",
-      badgeStyle: "bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/40 hover:border-purple-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
     telegram: {
       remoteLogoSrc: "https://cdn.simpleicons.org/telegram/26A5E4",
       logoFallbackSrc: "/assets/platform-logos/telegram.svg",
-      badgeStyle: "bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/40 hover:border-sky-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
     whatsapp: {
       remoteLogoSrc: "https://cdn.simpleicons.org/whatsapp/25D366",
       logoFallbackSrc: "/assets/platform-logos/whatsapp.svg",
-      badgeStyle: "bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/40 hover:border-green-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
     qqbot: {
       remoteLogoSrc: "/assets/platform-logos/qq-favicon.ico?v=1",
       logoFallbackSrc: "/assets/platform-logos/qq-favicon.ico?v=1",
-      badgeStyle: "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/40 hover:border-blue-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
     wecom: {
       remoteLogoSrc: "/assets/platform-logos/wecom.svg?v=1",
       logoFallbackSrc: "/assets/platform-logos/wecom.svg?v=1",
-      badgeStyle: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/40 hover:border-emerald-400",
+      badgeStyle:
+        'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]',
     },
   };
   const meta = knownMeta[displayName];
@@ -222,7 +236,9 @@ function PlatformBadge({
   let sessionUrl = buildGatewayUrl(gatewayPort, "/chat", { session: sessionKey }, gatewayHost);
   if (gatewayToken) sessionUrl = buildGatewayUrl(gatewayPort, "/chat", { session: sessionKey, token: gatewayToken }, gatewayHost);
 
-  const badgeStyle = meta?.badgeStyle || "bg-gray-500/20 text-gray-300 border border-gray-500/30 hover:bg-gray-500/40 hover:border-gray-400";
+  const badgeStyle =
+    meta?.badgeStyle ||
+    'border-black/10 bg-black/[0.04] text-foreground/80 hover:bg-black/[0.07] dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.12]';
   const translated = t(`platform.${displayName}`);
   const labelRaw = translated !== `platform.${displayName}` ? translated : displayName;
   const label = labelRaw.replace(/^[^\p{L}\p{N}]+/u, "").trim() || displayName;
@@ -277,17 +293,23 @@ export function ModelBadge({ model, accessMode }: { model: string; accessMode?: 
     ? model.split("/", 2)
     : ["default", model];
 
+  const neutralBadgeClass =
+    'border-black/10 bg-black/[0.05] text-foreground dark:border-white/10 dark:bg-white/[0.08]';
   const colors: Record<string, string> = {
-    "yunyi-claude": "bg-green-500/20 text-green-300 border-green-500/30",
-    minimax: "bg-orange-500/20 text-orange-300 border-orange-500/30",
-    volcengine: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-    bailian: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    "yunyi-claude":
+      neutralBadgeClass,
+    minimax:
+      neutralBadgeClass,
+    volcengine:
+      neutralBadgeClass,
+    bailian:
+      neutralBadgeClass,
   };
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-        colors[provider] || "bg-gray-500/20 text-gray-300 border-gray-500/30"
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+        colors[provider] || neutralBadgeClass
       }`}
     >
       {modelName}{accessMode ? ` (${accessMode})` : ""}
@@ -296,6 +318,7 @@ export function ModelBadge({ model, accessMode }: { model: string; accessMode?: 
 }
 
 function MiniSparkline({ data, width = 120, height = 24, color: fixedColor }: { data: number[]; width?: number; height?: number; color?: string }) {
+  const gradientId = useId().replace(/:/g, '');
   const hasData = data.some(v => v > 0);
   if (!hasData) return null;
 
@@ -319,7 +342,7 @@ function MiniSparkline({ data, width = 120, height = 24, color: fixedColor }: { 
   });
   const line = pts.map((p) => `${p.x},${p.y}`).join(" ");
   const area = `${pts[0].x},${height} ${line} ${pts[pts.length - 1].x},${height}`;
-  const id = `spark-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `spark-${gradientId}`;
   return (
     <span className="inline-flex items-center gap-1">
       <svg width={width} height={height} className="inline-block align-middle" aria-label={data.map(v => v ? formatMs(v) : "-").join(" → ")}>
@@ -424,8 +447,9 @@ export function AgentCard({
     try {
       await onModelChange(agent.id, draftModel);
       setIsEditingModel(false);
-    } catch (err: any) {
-      setModelSaveError(err?.message || t("agent.modelApplyFailed"));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t("agent.modelApplyFailed");
+      setModelSaveError(message);
     } finally {
       setIsSavingModel(false);
     }
@@ -433,7 +457,7 @@ export function AgentCard({
 
   return (
     <div
-      className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5 hover:border-[var(--accent)] transition-colors"
+      className="rounded-2xl border border-black/10 bg-background/90 p-3 shadow-sm transition-colors hover:bg-black/[0.02] dark:border-white/10 dark:hover:bg-white/[0.03]"
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-xl">{agent.emoji}</span>
@@ -483,19 +507,19 @@ export function AgentCard({
                   setModelSaveError(null);
                   setIsEditingModel(true);
                 }}
-                className="px-2 py-0.5 rounded-full text-xs border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition"
+                className={getOfficeChromeButtonClass({ size: 'xs', shape: 'pill' })}
               >
                 {t("agent.switchModel")}
               </button>
             )}
           </div>
           {canSwitchModel && isEditingModel && (
-            <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 space-y-2">
+            <div className={cn(OFFICE_INSET_PANEL_CLASS, 'mt-2 space-y-2 p-2')}>
               <select
                 value={draftModel}
                 onChange={(e) => setDraftModel(e.target.value)}
                 disabled={isSavingModel}
-                className="w-full px-2 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] text-sm text-[var(--text)]"
+                className="w-full rounded-lg border border-black/10 bg-background px-2 py-2 text-sm text-foreground dark:border-white/10"
               >
                 {!currentModelKnown && (
                   <option value={agent.model}>{`${t("agent.currentUnknownModel")}: ${agent.model}`}</option>
@@ -515,7 +539,10 @@ export function AgentCard({
                   type="button"
                   onClick={() => void handleModelSave()}
                   disabled={isSavingModel || !draftModel || draftModel === agent.model}
-                  className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent)] text-[var(--bg)] disabled:opacity-50"
+                  className={cn(
+                    getOfficeChromeButtonClass({ active: true, size: 'xs' }),
+                    'disabled:opacity-50'
+                  )}
                 >
                   {isSavingModel ? t("agent.modelSaving") : t("agent.saveModel")}
                 </button>
@@ -527,7 +554,10 @@ export function AgentCard({
                     setIsEditingModel(false);
                   }}
                   disabled={isSavingModel}
-                  className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition disabled:opacity-50"
+                  className={cn(
+                    getOfficeChromeButtonClass({ size: 'xs' }),
+                    'disabled:opacity-50'
+                  )}
                 >
                   {t("agent.cancelModel")}
                 </button>

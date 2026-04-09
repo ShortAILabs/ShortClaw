@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 import { hostApiFetch } from '@/lib/host-api';
 import type { ChannelType } from '@/types/channel';
-import type { AgentSummary, AgentsSnapshot } from '@/types/agent';
+import type { AgentSummary, AgentsSnapshot, AgentAvatarSummary } from '@/types/agent';
+
+export interface AgentAvatarSelection {
+  kind: 'default' | 'custom';
+  avatarId: string;
+}
 
 interface AgentsState {
   agents: AgentSummary[];
+  defaultAvatarOptions: AgentAvatarSummary[];
+  recommendedDefaultAvatarId: string | null;
   defaultAgentId: string;
   defaultModelRef: string | null;
   configuredChannelTypes: string[];
@@ -13,8 +20,9 @@ interface AgentsState {
   loading: boolean;
   error: string | null;
   fetchAgents: () => Promise<void>;
-  createAgent: (name: string, options?: { inheritWorkspace?: boolean }) => Promise<void>;
-  updateAgent: (agentId: string, name: string) => Promise<void>;
+  fetchDefaultAvatarOptions: () => Promise<void>;
+  createAgent: (name: string, options?: { inheritWorkspace?: boolean; avatarSelection?: AgentAvatarSelection | null }) => Promise<void>;
+  updateAgent: (agentId: string, payload: string | { name: string; avatarSelection?: AgentAvatarSelection | null }) => Promise<void>;
   updateAgentModel: (agentId: string, modelRef: string | null) => Promise<void>;
   deleteAgent: (agentId: string) => Promise<void>;
   assignChannel: (agentId: string, channelType: ChannelType) => Promise<void>;
@@ -35,6 +43,8 @@ function applySnapshot(snapshot: AgentsSnapshot | undefined) {
 
 export const useAgentsStore = create<AgentsState>((set) => ({
   agents: [],
+  defaultAvatarOptions: [],
+  recommendedDefaultAvatarId: null,
   defaultAgentId: 'main',
   defaultModelRef: null,
   configuredChannelTypes: [],
@@ -56,12 +66,34 @@ export const useAgentsStore = create<AgentsState>((set) => ({
     }
   },
 
-  createAgent: async (name: string, options?: { inheritWorkspace?: boolean }) => {
+  fetchDefaultAvatarOptions: async () => {
+    set({ error: null });
+    try {
+      const response = await hostApiFetch<{
+        avatars?: AgentAvatarSummary[];
+        recommendedAvatarId?: string | null;
+        success?: boolean;
+      }>('/api/agents/avatar-options');
+      set({
+        defaultAvatarOptions: response.avatars ?? [],
+        recommendedDefaultAvatarId: response.recommendedAvatarId ?? null,
+      });
+    } catch (error) {
+      set({ error: String(error) });
+      throw error;
+    }
+  },
+
+  createAgent: async (name: string, options?: { inheritWorkspace?: boolean; avatarSelection?: AgentAvatarSelection | null }) => {
     set({ error: null });
     try {
       const snapshot = await hostApiFetch<AgentsSnapshot & { success?: boolean }>('/api/agents', {
         method: 'POST',
-        body: JSON.stringify({ name, inheritWorkspace: options?.inheritWorkspace }),
+        body: JSON.stringify({
+          name,
+          inheritWorkspace: options?.inheritWorkspace,
+          avatarSelection: options?.avatarSelection ?? undefined,
+        }),
       });
       set(applySnapshot(snapshot));
     } catch (error) {
@@ -70,14 +102,20 @@ export const useAgentsStore = create<AgentsState>((set) => ({
     }
   },
 
-  updateAgent: async (agentId: string, name: string) => {
+  updateAgent: async (agentId: string, payload: string | { name: string; avatarSelection?: AgentAvatarSelection | null }) => {
     set({ error: null });
     try {
+      const normalized = typeof payload === 'string'
+        ? { name: payload }
+        : payload;
       const snapshot = await hostApiFetch<AgentsSnapshot & { success?: boolean }>(
         `/api/agents/${encodeURIComponent(agentId)}`,
         {
           method: 'PUT',
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({
+            name: normalized.name,
+            avatarSelection: normalized.avatarSelection ?? undefined,
+          }),
         }
       );
       set(applySnapshot(snapshot));

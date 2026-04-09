@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, type CSSProperties } from 'react';
 import { OfficeState, type GatewaySreState } from '@/lib/pixel-office/engine/officeState';
 import { renderFrame } from '@/lib/pixel-office/engine/renderer';
 import type { EditorRenderState } from '@/lib/pixel-office/engine/renderer';
@@ -36,9 +36,21 @@ import {
 } from '@/lib/pixel-office/notificationSound';
 import { loadCharacterPNGs, loadWallPNG } from '@/lib/pixel-office/sprites/pngLoader';
 import { useTranslation } from 'react-i18next';
+import { Avatar } from '@/components/ui/avatar';
+import { useAgentsStore } from '@/stores/agents';
+import { cn } from '@/lib/utils';
+import { resolveOfficeAgentChipAvatarSrc } from './avatar-utils';
+import { computeOfficeViewportTransform } from './viewport-utils';
 import { EditorToolbar } from './EditorToolbar';
 import { EditActionBar } from './EditActionBar';
 import { AgentCard, type AgentCardAgent } from './AgentCard';
+import {
+  OFFICE_CLOSE_BUTTON_CLASS,
+  OFFICE_TOOLTIP_CLASS,
+  getOfficeChromeButtonClass,
+  getOfficeModalOverlayClass,
+  getOfficeModalPanelClass,
+} from './chrome';
 
 type AgentModelTestResult = any;
 type AgentSessionTestResult = any;
@@ -116,6 +128,7 @@ function getGhostBorderDirection(
 // (Removed unused _getLayoutContentBounds)
 
 const DESKTOP_CANVAS_ZOOM = 2.5;
+const DESKTOP_MIN_ZOOM = 0.45;
 const MOBILE_CANVAS_ZOOM = 1.9;
 const MOBILE_MIN_ZOOM = 0.55;
 const MOBILE_MAX_ZOOM = 6;
@@ -149,6 +162,8 @@ let cachedPrevAgentStates = new Map<string, string>();
 export function Office() {
   const { t, i18n } = useTranslation('office');
   const locale = i18n.language;
+  const configuredAgents = useAgentsStore((state) => state.agents);
+  const fetchConfiguredAgents = useAgentsStore((state) => state.fetchAgents);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const officeRef = useRef<OfficeState | null>(null);
@@ -477,7 +492,7 @@ export function Office() {
 
   useEffect(() => {
     cachedAgents = agents;
-  }, [agents]);
+  }, [agents, t]);
 
   useEffect(() => {
     cachedAgentIdMap = new Map(agentIdMapRef.current);
@@ -510,51 +525,21 @@ export function Office() {
 
       const width = container.clientWidth;
       const height = container.clientHeight;
-
-      // Keep desktop zoom fixed. On mobile, fit the whole office into current viewport.
-      if (isMobileViewport) {
-        const layout = office.layout;
-        const rows = layout.rows;
-        const cols = layout.cols;
-        const baseW = cols * TILE_SIZE;
-        const topExtraTiles = MOBILE_TOP_EXTRA_TILES;
-        const fitW = Math.max(1, width - MOBILE_FIT_PADDING_PX * 2) / Math.max(1, baseW);
-        const fitH =
-          Math.max(1, height - MOBILE_FIT_PADDING_PX * 2) /
-          Math.max(1, (rows + topExtraTiles) * TILE_SIZE);
-        const fitZoom = Math.min(fitW, fitH);
-        const nextZoom = Math.max(
-          MOBILE_MIN_ZOOM,
-          Math.min(MOBILE_MAX_ZOOM, fitZoom || MOBILE_CANVAS_ZOOM)
-        );
-        zoomRef.current = nextZoom;
-
-        const mapH = rows * TILE_SIZE * nextZoom;
-        const centerOffsetY = (height - mapH) / 2;
-        const topExtraPx = topExtraTiles * TILE_SIZE * nextZoom;
-        const minPanY = MOBILE_FIT_PADDING_PX + topExtraPx - centerOffsetY;
-        const maxPanY = height - MOBILE_FIT_PADDING_PX - (centerOffsetY + mapH);
-        const basePanY = minPanY > maxPanY ? minPanY : Math.min(maxPanY, Math.max(minPanY, 0));
-        const targetPanY = Math.min(
-          maxPanY,
-          Math.max(minPanY - 16, basePanY + MOBILE_VIEW_NUDGE_Y_PX)
-        );
-        panRef.current = { x: 0, y: Math.round(targetPanY) };
-      } else {
-        zoomRef.current = DESKTOP_CANVAS_ZOOM;
-        const layout = office.layout;
-        const rows = layout.rows;
-        const mapH = rows * TILE_SIZE * zoomRef.current;
-        const centerOffsetY = (height - mapH) / 2;
-        const topExtraPx = DESKTOP_TOP_EXTRA_TILES * TILE_SIZE * zoomRef.current;
-        const minPanY = topExtraPx + DESKTOP_TOP_SAFE_PADDING_PX - centerOffsetY;
-        const maxPanY = height - (centerOffsetY + mapH);
-        const targetPanY = minPanY > maxPanY ? minPanY : Math.min(maxPanY, Math.max(minPanY, 0));
-        const nextPanY = Math.round(targetPanY);
-        if (panRef.current.x !== 0 || panRef.current.y !== nextPanY) {
-          panRef.current = { x: 0, y: nextPanY };
-        }
-      }
+      const layout = office.layout;
+      const viewport = computeOfficeViewportTransform({
+        width,
+        height,
+        cols: layout.cols,
+        rows: layout.rows,
+        tileSize: TILE_SIZE,
+        minZoom: isMobileViewport ? MOBILE_MIN_ZOOM : DESKTOP_MIN_ZOOM,
+        maxZoom: isMobileViewport ? MOBILE_MAX_ZOOM : DESKTOP_CANVAS_ZOOM,
+        paddingPx: isMobileViewport ? MOBILE_FIT_PADDING_PX : DESKTOP_TOP_SAFE_PADDING_PX,
+        topExtraTiles: isMobileViewport ? MOBILE_TOP_EXTRA_TILES : DESKTOP_TOP_EXTRA_TILES,
+        nudgeYPx: isMobileViewport ? MOBILE_VIEW_NUDGE_Y_PX : 0,
+      });
+      zoomRef.current = viewport.zoom;
+      panRef.current = { x: viewport.panX, y: viewport.panY };
       const dpr = window.devicePixelRatio || 1;
       office.update(dt);
 
@@ -916,6 +901,10 @@ export function Office() {
   }, []);
 
   // Fetch providers and models
+  useEffect(() => {
+    void fetchConfiguredAgents();
+  }, [fetchConfiguredAgents]);
+
   useEffect(() => {
     const fetchProviders = async () => {
       try {
@@ -1951,8 +1940,28 @@ export function Office() {
   }, []);
 
   const resetView = useCallback(() => {
-    zoomRef.current = isMobileViewport ? MOBILE_CANVAS_ZOOM : DESKTOP_CANVAS_ZOOM;
-    panRef.current = { x: 0, y: 0 };
+    const office = officeRef.current;
+    const container = containerRef.current;
+    if (!office || !container) {
+      zoomRef.current = isMobileViewport ? MOBILE_CANVAS_ZOOM : DESKTOP_CANVAS_ZOOM;
+      panRef.current = { x: 0, y: 0 };
+      return;
+    }
+
+    const viewport = computeOfficeViewportTransform({
+      width: container.clientWidth,
+      height: container.clientHeight,
+      cols: office.layout.cols,
+      rows: office.layout.rows,
+      tileSize: TILE_SIZE,
+      minZoom: isMobileViewport ? MOBILE_MIN_ZOOM : DESKTOP_MIN_ZOOM,
+      maxZoom: isMobileViewport ? MOBILE_MAX_ZOOM : DESKTOP_CANVAS_ZOOM,
+      paddingPx: isMobileViewport ? MOBILE_FIT_PADDING_PX : DESKTOP_TOP_SAFE_PADDING_PX,
+      topExtraTiles: isMobileViewport ? MOBILE_TOP_EXTRA_TILES : DESKTOP_TOP_EXTRA_TILES,
+      nudgeYPx: isMobileViewport ? MOBILE_VIEW_NUDGE_Y_PX : 0,
+    });
+    zoomRef.current = viewport.zoom;
+    panRef.current = { x: viewport.panX, y: viewport.panY };
   }, [isMobileViewport]);
 
   // ── Hovered agent tooltip data ──────────────────────────────
@@ -2012,13 +2021,9 @@ export function Office() {
   const selectedItem = editor.selectedFurnitureUid
     ? officeRef.current?.layout.furniture.find((f) => f.uid === editor.selectedFurnitureUid)
     : null;
-  const modalOverlayClass = isMobileViewport
-    ? 'absolute inset-0 z-20 flex items-end justify-center bg-black/50'
-    : 'absolute inset-0 z-20 flex items-center justify-center bg-black/40';
+  const modalOverlayClass = getOfficeModalOverlayClass(isMobileViewport);
   const modalPanelClass = (desktopWidth = 'w-80', maxHeight = 'max-h-[80%]') =>
-    isMobileViewport
-      ? `w-full ${maxHeight} overflow-y-auto text-[#f1f5f9] rounded-t-2xl border-x border-t border-[var(--border)] bg-[#1e293b] shadow-2xl p-4 pb-6`
-      : `${desktopWidth} ${maxHeight} text-[#f1f5f9] overflow-y-auto rounded-xl border border-[var(--border)] bg-[#1e293b] shadow-2xl p-4`;
+    getOfficeModalPanelClass(isMobileViewport, desktopWidth, maxHeight);
   const displayAgents = useMemo<AgentActivity[]>(() => {
     const expanded: AgentActivity[] = [];
     for (const agent of agents) {
@@ -2042,6 +2047,16 @@ export function Office() {
   for (let i = 0; i < displayAgents.length; i += 9) {
     mobileAgentPages.push(displayAgents.slice(i, i + 9));
   }
+  const agentAvatarById = useMemo(
+    () =>
+      new Map(
+        configuredAgents.map((agent) => [
+          agent.id,
+          agent.avatar?.thumbSrc ?? agent.avatar?.src ?? null,
+        ]),
+      ),
+    [configuredAgents],
+  );
   const renderAgentChip = (agent: AgentActivity, mobileGrid = false) => {
     const isTempWorker = agent.agentId.startsWith('subagent:');
     const parentAgentIdFromKey = isTempWorker ? agent.agentId.split(':')[1] || '' : '';
@@ -2053,12 +2068,13 @@ export function Office() {
       ? `${tempWorkerOwner} ${t('pixelOffice.tempWorker.createdBy')}`
       : `agent id：${agent.agentId}`;
     const chipToneClass = isTempWorker
-      ? 'bg-red-900/45 border-red-700/80 text-red-100 animate-pulse'
+      ? 'border-destructive/35 bg-destructive/10 text-destructive animate-pulse'
       : agent.state === 'working'
         ? `pixel-agent-chip-working ${isMobileViewport ? '' : ' animate-pulse'}`
         : agent.state === 'idle'
           ? `pixel-agent-chip-idle ${isMobileViewport ? '' : ' animate-pulse'}`
           : 'pixel-agent-chip-neutral';
+    const avatarSrc = resolveOfficeAgentChipAvatarSrc(agent.agentId, agentAvatarById);
     return (
       <div key={agent.agentId} className="group relative overflow-visible">
         <div
@@ -2071,7 +2087,16 @@ export function Office() {
             ? { style: { animationDuration: isTempWorker ? '0.9s' : '1.3s' } }
             : {})}
         >
-          <span className={mobileGrid ? 'shrink-0 text-sm' : ''}>{agent.emoji}</span>
+          {avatarSrc ? (
+            <Avatar
+              src={avatarSrc}
+              name={agent.name}
+              size={mobileGrid ? 18 : 20}
+              className="shrink-0 border border-black/10 dark:border-white/10 bg-white/10"
+            />
+          ) : (
+            <span className={mobileGrid ? 'shrink-0 text-sm' : ''}>{agent.emoji}</span>
+          )}
           {isTempWorker ? (
             <span
               className={`min-w-0 flex flex-col justify-center ${mobileGrid ? 'max-w-[4.6rem]' : 'max-w-[5.8rem]'} leading-none`}
@@ -2090,7 +2115,7 @@ export function Office() {
           )}
           {agent.state === 'working' && (
             <span
-              className={`pixel-agent-chip-state uppercase tracking-wider ${mobileGrid ? 'text-[9px] truncate' : 'text-[10px]'} ${isTempWorker ? 'text-red-100' : 'text-green-200'}`}
+              className={`pixel-agent-chip-state uppercase tracking-wider ${mobileGrid ? 'text-[9px] truncate' : 'text-[10px]'} ${isTempWorker ? 'text-destructive' : ''}`}
             >
               {t('pixelOffice.state.working')}
             </span>
@@ -2118,7 +2143,12 @@ export function Office() {
           )}
         </div>
         {!isMobileViewport && (
-          <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-[calc(100%+6px)] whitespace-nowrap rounded-md border border-[var(--border)] bg-[var(--card)]/95 px-2 py-1 text-[11px] text-[var(--text)] opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100">
+          <div
+            className={cn(
+              OFFICE_TOOLTIP_CLASS,
+              'pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-[calc(100%+6px)] whitespace-nowrap px-2 py-1 text-[11px] opacity-0 transition-opacity duration-150 group-hover:opacity-100'
+            )}
+          >
             {chipTooltip}
           </div>
         )}
@@ -2127,7 +2157,19 @@ export function Office() {
   };
 
   return (
-    <div className="relative flex flex-col overflow-hidden h-[calc(100dvh-3.5rem)] md:h-full">
+    <div
+      className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden md:h-full"
+      style={
+        {
+          '--text': 'hsl(var(--foreground))',
+          '--text-muted': 'hsl(var(--muted-foreground))',
+          '--card': 'hsl(var(--background))',
+          '--bg': 'hsl(var(--muted))',
+          '--accent': 'hsl(var(--primary))',
+          '--border': 'hsl(var(--border))',
+        } as CSSProperties
+      }
+    >
       {/* Floating photo comment DOM bubbles */}
       {floatingCommentsRef.current.map((fc) => (
         <div
@@ -2176,26 +2218,25 @@ export function Office() {
         </div>
       ))}
       {/* Top bar: agent tags + controls */}
-      <div className="flex flex-col gap-2 p-3 md:p-4 border-b border-[var(--border)]">
+      <div className="flex flex-col gap-2 border-b border-black/10 p-3 dark:border-white/10 md:p-4">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-bold text-[#0b1220] dark:text-[#f1f5f9]">
+          <span className="text-sm font-semibold text-foreground">
             {t('pixelOffice.title')}
           </span>
           <div className="flex gap-2">
             <button
               onClick={toggleSound}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                soundOn
-                  ? 'bg-[var(--accent)]/10 border-[var(--border)] text-[var(--accent)]'
-                  : 'bg-[var(--card)] border-[var(--border)] text-[var(--text-muted)]'
-              }`}
+              className={getOfficeChromeButtonClass({
+                active: soundOn,
+                size: 'xs',
+              })}
             >
               {soundOn ? '🔔' : '🔕'} {t('pixelOffice.sound')}
             </button>
             {soundOn && (
               <button
                 onClick={skipToNextTrack}
-                className="px-3 py-1.5 text-xs rounded-lg border transition-colors bg-[var(--card)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--accent)]"
+                className={getOfficeChromeButtonClass({ size: 'xs' })}
                 title="下一首"
               >
                 ⏭
@@ -2203,11 +2244,10 @@ export function Office() {
             )}
             <button
               onClick={toggleEditMode}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                isEditMode
-                  ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)]'
-                  : 'bg-[var(--card)] border-[var(--border)] text-[var(--text-muted)]'
-              }`}
+              className={getOfficeChromeButtonClass({
+                active: isEditMode,
+                size: 'xs',
+              })}
             >
               {isEditMode ? t('pixelOffice.exitEdit') : t('pixelOffice.editMode')}
             </button>
@@ -2247,7 +2287,7 @@ export function Office() {
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="flex-1 relative overflow-hidden bg-[#1a1a2e]"
+        className="flex-1 relative overflow-hidden bg-background"
         data-tick={floatingTick}
       >
         <canvas
@@ -2264,7 +2304,7 @@ export function Office() {
           style={{ touchAction: 'none' }}
         />
         {!officeReady && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#1a1a2e]/85 pointer-events-none">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/85 pointer-events-none">
             <div className="px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] text-sm text-[var(--text-muted)]">
               {t('common.loading')}
             </div>
@@ -2277,7 +2317,7 @@ export function Office() {
             {broadcasts.map((b) => (
               <div
                 key={b.id}
-                className="px-4 py-2 rounded-full bg-black/70 text-white text-sm font-medium backdrop-blur-sm shadow-lg whitespace-nowrap"
+                className="whitespace-nowrap rounded-full border border-black/10 bg-background/95 px-4 py-2 text-sm font-medium text-foreground shadow-lg backdrop-blur-sm dark:border-white/10"
                 style={{
                   animation: 'broadcastIn 0.3s ease-out, broadcastOut 0.5s ease-in 4.5s forwards',
                 }}
@@ -2295,7 +2335,10 @@ export function Office() {
         {/* Reset view button */}
         <button
           onClick={resetView}
-          className="absolute top-3 right-3 px-2 py-1.5 text-xs rounded-lg border bg-[var(--card)]/80 border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-colors backdrop-blur-sm"
+          className={cn(
+            getOfficeChromeButtonClass({ size: 'xs' }),
+            'absolute right-3 top-3 bg-background/85 backdrop-blur-sm'
+          )}
           title={t('pixelOffice.resetView')}
         >
           ⊡
@@ -2304,7 +2347,10 @@ export function Office() {
         {/* Agent hover tooltip */}
         {hoveredInfo && !isEditMode && !selectedAgentId && !isMobileViewport && (
           <div
-            className="absolute pointer-events-none z-10 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm text-xs shadow-lg"
+            className={cn(
+              OFFICE_TOOLTIP_CLASS,
+              'absolute pointer-events-none z-10 px-3 py-2 text-xs'
+            )}
             style={{
               left: Math.min(
                 mousePosRef.current.x + 12,
@@ -2418,14 +2464,17 @@ export function Office() {
             const tooltipTop = Math.max(8, serverTooltip.y + 12);
             return (
               <div
-                className="absolute pointer-events-auto z-10 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm text-xs shadow-lg"
+                className={cn(
+                  OFFICE_TOOLTIP_CLASS,
+                  'absolute pointer-events-auto z-10 px-3 py-2 text-xs'
+                )}
                 style={{ left: tooltipLeft, top: tooltipTop }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
-                  className="absolute right-1.5 top-1.5 text-[10px] leading-none text-[var(--text-muted)] hover:text-[var(--text)]"
+                  className={cn(OFFICE_CLOSE_BUTTON_CLASS, 'absolute right-1.5 top-1.5 text-[10px]')}
                   onClick={() => setServerTooltip((prev) => ({ ...prev, open: false }))}
                   aria-label={t('common.close')}
                   title={t('common.close')}
@@ -2504,7 +2553,7 @@ export function Office() {
                   <div className="flex justify-end mb-2">
                     <button
                       onClick={() => setSelectedAgentId(null)}
-                      className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                      className={OFFICE_CLOSE_BUTTON_CLASS}
                     >
                       ×
                     </button>
@@ -2539,14 +2588,17 @@ export function Office() {
             const tooltipTop = Math.max(8, subagentCreatorInfo.y + 12);
             return (
               <div
-                className="absolute pointer-events-auto z-10 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm text-xs shadow-lg"
+                className={cn(
+                  OFFICE_TOOLTIP_CLASS,
+                  'absolute pointer-events-auto z-10 px-3 py-2 text-xs'
+                )}
                 style={{ left: tooltipLeft, top: tooltipTop }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
-                  className="absolute right-1.5 top-1.5 text-[10px] leading-none text-[var(--text-muted)] hover:text-[var(--text)]"
+                  className={cn(OFFICE_CLOSE_BUTTON_CLASS, 'absolute right-1.5 top-1.5 text-[10px]')}
                   onClick={() => setSubagentCreatorInfo(null)}
                   aria-label={t('common.close')}
                   title={t('common.close')}
@@ -2583,7 +2635,7 @@ export function Office() {
                 <span className="font-semibold text-[var(--text)]">📚 {t('models.title')}</span>
                 <button
                   onClick={() => setShowModelPanel(false)}
-                  className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                  className={OFFICE_CLOSE_BUTTON_CLASS}
                 >
                   ×
                 </button>
@@ -2662,7 +2714,7 @@ export function Office() {
                     </span>
                     <button
                       onClick={() => setShowTokenRank(false)}
-                      className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                      className={OFFICE_CLOSE_BUTTON_CLASS}
                     >
                       ×
                     </button>
@@ -2724,7 +2776,7 @@ export function Office() {
                     </span>
                     <button
                       onClick={() => setShowActivityHeatmap(false)}
-                      className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                      className={OFFICE_CLOSE_BUTTON_CLASS}
                     >
                       ×
                     </button>
@@ -2821,7 +2873,7 @@ export function Office() {
                     <span className="font-semibold text-[var(--text)]">📱 OpenClaw Latest</span>
                     <button
                       onClick={() => setShowPhonePanel(false)}
-                      className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                      className={OFFICE_CLOSE_BUTTON_CLASS}
                     >
                       ×
                     </button>
@@ -2891,7 +2943,7 @@ export function Office() {
                     </span>
                     <button
                       onClick={() => setShowIdleRank(false)}
-                      className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none"
+                      className={OFFICE_CLOSE_BUTTON_CLASS}
                     >
                       ×
                     </button>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Bot, Check, Plus, RefreshCw, Settings2, Trash2, X } from 'lucide-react';
+import { AlertCircle, Check, Plus, RefreshCw, Settings2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,13 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Switch } from '@/components/ui/switch';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { Avatar } from '@/components/ui/avatar';
+import { AgentAvatarPicker } from '@/components/agents/AgentAvatarPicker';
+import { AgentAvatarCropDialog } from '@/components/agents/AgentAvatarCropDialog';
 import { useAgentsStore } from '@/stores/agents';
+import type { AgentAvatarSelection } from '@/stores/agents';
 import { useGatewayStore } from '@/stores/gateway';
 import { useProviderStore } from '@/stores/providers';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { CHANNEL_ICONS, CHANNEL_NAMES, type ChannelType } from '@/types/channel';
-import type { AgentSummary } from '@/types/agent';
+import type { AgentSummary, AgentAvatarSummary } from '@/types/agent';
 import type { ProviderAccount, ProviderVendorInfo, ProviderWithKeyInfo } from '@/lib/providers';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -92,6 +96,16 @@ function hasConfiguredProviderCredentials(
   return statusById.get(account.id)?.hasKey ?? false;
 }
 
+function getPreferredDefaultAvatarSelection(
+  defaultAvatarOptions: AgentAvatarSummary[],
+  recommendedDefaultAvatarId: string | null,
+): AgentAvatarSelection | null {
+  if (defaultAvatarOptions.length === 0) return null;
+  const preferred = defaultAvatarOptions.find((avatar) => avatar.avatarId === recommendedDefaultAvatarId)
+    ?? defaultAvatarOptions[0];
+  return preferred ? { kind: 'default', avatarId: preferred.avatarId } : null;
+}
+
 export function Agents() {
   const { t } = useTranslation('agents');
   const gatewayStatus = useGatewayStore((state) => state.status);
@@ -99,9 +113,12 @@ export function Agents() {
   const lastGatewayStateRef = useRef(gatewayStatus.state);
   const {
     agents,
+    defaultAvatarOptions,
+    recommendedDefaultAvatarId,
     loading,
     error,
     fetchAgents,
+    fetchDefaultAvatarOptions,
     createAgent,
     deleteAgent,
   } = useAgentsStore();
@@ -121,9 +138,16 @@ export function Agents() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void Promise.all([fetchAgents(), fetchChannelAccounts(), refreshProviderSnapshot()]);
-  }, [fetchAgents, fetchChannelAccounts, refreshProviderSnapshot]);
+    const timeoutId = window.setTimeout(() => {
+      void Promise.all([
+        fetchAgents(),
+        fetchDefaultAvatarOptions(),
+        fetchChannelAccounts(),
+        refreshProviderSnapshot(),
+      ]);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchAgents, fetchDefaultAvatarOptions, fetchChannelAccounts, refreshProviderSnapshot]);
 
   useEffect(() => {
     const unsubscribe = subscribeHostEvent('gateway:channel-status', () => {
@@ -151,7 +175,7 @@ export function Agents() {
     [activeAgentId, agents],
   );
   const handleRefresh = () => {
-    void Promise.all([fetchAgents(), fetchChannelAccounts()]);
+    void Promise.all([fetchAgents(), fetchDefaultAvatarOptions(), fetchChannelAccounts()]);
   };
 
   if (loading) {
@@ -229,6 +253,8 @@ export function Agents() {
 
       {showAddDialog && (
         <AddAgentDialog
+          defaultAvatarOptions={defaultAvatarOptions}
+          recommendedDefaultAvatarId={recommendedDefaultAvatarId}
           onClose={() => setShowAddDialog(false)}
           onCreate={async (name, options) => {
             await createAgent(name, options);
@@ -241,6 +267,7 @@ export function Agents() {
       {activeAgent && (
         <AgentSettingsModal
           agent={activeAgent}
+          defaultAvatarOptions={defaultAvatarOptions}
           channelGroups={channelGroups}
           onClose={() => setActiveAgentId(null)}
         />
@@ -308,8 +335,13 @@ function AgentCard({
         agent.isDefault && 'bg-black/[0.04] dark:bg-white/[0.06]'
       )}
     >
-      <div className="h-[46px] w-[46px] shrink-0 flex items-center justify-center text-primary bg-primary/10 rounded-full shadow-sm mb-3">
-        <Bot className="h-[22px] w-[22px]" />
+      <div className="mb-3 shrink-0">
+        <Avatar
+          src={agent.avatar?.thumbSrc ?? agent.avatar?.src ?? null}
+          name={agent.name}
+          size={46}
+          className="bg-primary/10 shadow-sm"
+        />
       </div>
       <div className="flex flex-col flex-1 min-w-0 py-0.5 mt-1">
         <div className="flex items-center justify-between gap-3 mb-1">
@@ -393,22 +425,32 @@ function ChannelLogo({ type }: { type: ChannelType }) {
 }
 
 function AddAgentDialog({
+  defaultAvatarOptions,
+  recommendedDefaultAvatarId,
   onClose,
   onCreate,
 }: {
+  defaultAvatarOptions: AgentAvatarSummary[];
+  recommendedDefaultAvatarId: string | null;
   onClose: () => void;
-  onCreate: (name: string, options: { inheritWorkspace: boolean }) => Promise<void>;
+  onCreate: (name: string, options: { inheritWorkspace: boolean; avatarSelection?: AgentAvatarSelection | null }) => Promise<void>;
 }) {
   const { t } = useTranslation('agents');
   const [name, setName] = useState('');
   const [inheritWorkspace, setInheritWorkspace] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarSelection, setAvatarSelection] = useState<AgentAvatarSelection | null>(null);
+  const [customAvatarPreview, setCustomAvatarPreview] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const effectiveAvatarSelection = avatarSelection
+    ?? getPreferredDefaultAvatarSelection(defaultAvatarOptions, recommendedDefaultAvatarId);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await onCreate(name.trim(), { inheritWorkspace });
+      await onCreate(name.trim(), { inheritWorkspace, avatarSelection: effectiveAvatarSelection });
     } catch (error) {
       toast.error(t('toast.agentCreateFailed', { error: String(error) }));
       setSaving(false);
@@ -417,9 +459,14 @@ function AddAgentDialog({
     setSaving(false);
   };
 
+  const openCustomPicker = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
+    <>
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-2xl font-serif font-normal tracking-tight">
             {t('createDialog.title')}
@@ -437,6 +484,32 @@ function AddAgentDialog({
               onChange={(event) => setName(event.target.value)}
               placeholder={t('createDialog.namePlaceholder')}
               className={inputClasses}
+            />
+          </div>
+          <div className="space-y-2.5">
+            <Label className={labelClasses}>{t('createDialog.avatarLabel')}</Label>
+            <p className="text-[13px] text-foreground/60">{t('createDialog.avatarDescription')}</p>
+            <AgentAvatarPicker
+              avatars={defaultAvatarOptions}
+              value={effectiveAvatarSelection}
+              customPreviewSrc={customAvatarPreview}
+              customLabel={t('createDialog.customAvatar')}
+              onSelectDefault={(avatarId) => {
+                setAvatarSelection({ kind: 'default', avatarId });
+              }}
+              onSelectCustom={openCustomPicker}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setCropFile(file);
+                event.currentTarget.value = '';
+              }}
             />
           </div>
           <div className="flex items-center justify-between">
@@ -475,16 +548,58 @@ function AddAgentDialog({
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+      {cropFile && (
+        <AgentAvatarCropDialog
+          file={cropFile}
+          title={t('cropDialog.title')}
+          description={t('cropDialog.description')}
+          zoomLabel={t('cropDialog.zoomLabel')}
+          cancelLabel={t('common:actions.cancel')}
+          reselectLabel={t('cropDialog.reselect')}
+          applyLabel={t('cropDialog.apply')}
+          dragHint={t('cropDialog.dragHint')}
+          onClose={() => setCropFile(null)}
+          onReselect={() => {
+            setCropFile(null);
+            setTimeout(() => openCustomPicker(), 0);
+          }}
+          onApply={async (result) => {
+            const response = await hostApiFetch<{
+              success?: boolean;
+              avatar?: AgentAvatarSummary;
+            }>('/api/files/agent-avatar', {
+              method: 'POST',
+              body: JSON.stringify({
+                base64: result.base64,
+                fileName: result.fileName,
+                mimeType: result.mimeType,
+              }),
+            });
+            if (!response.avatar) {
+              throw new Error('Avatar upload failed');
+            }
+            setAvatarSelection({
+              kind: 'custom',
+              avatarId: response.avatar.avatarId,
+            });
+            setCustomAvatarPreview(response.avatar.thumbSrc);
+            setCropFile(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
 function AgentSettingsModal({
   agent,
+  defaultAvatarOptions,
   channelGroups,
   onClose,
 }: {
   agent: AgentSummary;
+  defaultAvatarOptions: AgentAvatarSummary[];
   channelGroups: ChannelGroupItem[];
   onClose: () => void;
 }) {
@@ -493,22 +608,40 @@ function AgentSettingsModal({
   const [name, setName] = useState(agent.name);
   const [savingName, setSavingName] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
+  const [avatarSelection, setAvatarSelection] = useState<AgentAvatarSelection | null>(
+    agent.avatar ? { kind: agent.avatar.kind, avatarId: agent.avatar.avatarId } : null,
+  );
+  const [customAvatarPreview, setCustomAvatarPreview] = useState<string | null>(
+    agent.avatar?.kind === 'custom' ? agent.avatar.thumbSrc : null,
+  );
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setName(agent.name);
-  }, [agent.name]);
+    setAvatarSelection(agent.avatar ? { kind: agent.avatar.kind, avatarId: agent.avatar.avatarId } : null);
+    setCustomAvatarPreview(agent.avatar?.kind === 'custom' ? agent.avatar.thumbSrc : null);
+  }, [agent.avatar, agent.name]);
 
   const handleSaveName = async () => {
-    if (!name.trim() || name.trim() === agent.name) return;
+    const avatarChanged = avatarSelection?.kind !== agent.avatar?.kind || avatarSelection?.avatarId !== agent.avatar?.avatarId;
+    if ((!name.trim() || name.trim() === agent.name) && !avatarChanged) return;
     setSavingName(true);
     try {
-      await updateAgent(agent.id, name.trim());
+      await updateAgent(agent.id, {
+        name: name.trim(),
+        avatarSelection,
+      });
       toast.success(t('toast.agentUpdated'));
     } catch (error) {
       toast.error(t('toast.agentUpdateFailed', { error: String(error) }));
     } finally {
       setSavingName(false);
     }
+  };
+
+  const openCustomPicker = () => {
+    fileInputRef.current?.click();
   };
 
   const assignedChannels = channelGroups.flatMap((group) =>
@@ -548,6 +681,26 @@ function AgentSettingsModal({
         </CardHeader>
         <CardContent className="space-y-6 pt-4 overflow-y-auto flex-1 p-6">
           <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar
+                src={
+                  (avatarSelection?.kind === 'custom' ? customAvatarPreview : null)
+                  || (avatarSelection?.kind === 'default'
+                    ? defaultAvatarOptions.find((item) => item.avatarId === avatarSelection.avatarId)?.thumbSrc
+                    : agent.avatar?.thumbSrc)
+                  || agent.avatar?.thumbSrc
+                  || null
+                }
+                name={name || agent.name}
+                size={56}
+                className="bg-primary/10 shadow-sm"
+              />
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-foreground">{name || agent.name}</p>
+                <p className="text-[13px] text-foreground/60">{t('settingsDialog.identityDescription')}</p>
+              </div>
+            </div>
+
             <div className="space-y-2.5">
               <Label htmlFor="agent-settings-name" className={labelClasses}>{t('settingsDialog.nameLabel')}</Label>
               <div className="flex gap-2">
@@ -555,24 +708,59 @@ function AgentSettingsModal({
                   id="agent-settings-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  readOnly={agent.isDefault}
                   className={inputClasses}
                 />
-                {!agent.isDefault && (
-                  <Button
-                    variant="outline"
-                    onClick={() => void handleSaveName()}
-                    disabled={savingName || !name.trim() || name.trim() === agent.name}
-                    className="h-[44px] text-[13px] font-medium rounded-xl px-4 border-black/10 dark:border-white/10 bg-[#eeece3] dark:bg-muted hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
-                  >
-                    {savingName ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      t('common:actions.save')
-                    )}
-                  </Button>
-                )}
               </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <Label className={labelClasses}>{t('settingsDialog.avatarLabel')}</Label>
+              <p className="text-[13px] text-foreground/60">{t('settingsDialog.avatarDescription')}</p>
+              <AgentAvatarPicker
+                avatars={defaultAvatarOptions}
+                value={avatarSelection}
+                customPreviewSrc={customAvatarPreview}
+                customLabel={t('createDialog.customAvatar')}
+                onSelectDefault={(avatarId) => {
+                  setAvatarSelection({ kind: 'default', avatarId });
+                }}
+                onSelectCustom={openCustomPicker}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setCropFile(file);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => void handleSaveName()}
+                disabled={
+                  savingName
+                  || !name.trim()
+                  || (
+                    name.trim() === agent.name
+                    && avatarSelection?.kind === agent.avatar?.kind
+                    && avatarSelection?.avatarId === agent.avatar?.avatarId
+                  )
+                }
+                className="h-[44px] text-[13px] font-medium rounded-xl px-4 border-black/10 dark:border-white/10 bg-[#eeece3] dark:bg-muted hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
+              >
+                {savingName ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  t('common:actions.save')
+                )}
+              </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -650,6 +838,45 @@ function AgentSettingsModal({
         <AgentModelModal
           agent={agent}
           onClose={() => setShowModelModal(false)}
+        />
+      )}
+      {cropFile && (
+        <AgentAvatarCropDialog
+          file={cropFile}
+          title={t('cropDialog.title')}
+          description={t('cropDialog.description')}
+          zoomLabel={t('cropDialog.zoomLabel')}
+          cancelLabel={t('common:actions.cancel')}
+          reselectLabel={t('cropDialog.reselect')}
+          applyLabel={t('cropDialog.apply')}
+          dragHint={t('cropDialog.dragHint')}
+          onClose={() => setCropFile(null)}
+          onReselect={() => {
+            setCropFile(null);
+            setTimeout(() => openCustomPicker(), 0);
+          }}
+          onApply={async (result) => {
+            const response = await hostApiFetch<{
+              success?: boolean;
+              avatar?: AgentAvatarSummary;
+            }>('/api/files/agent-avatar', {
+              method: 'POST',
+              body: JSON.stringify({
+                base64: result.base64,
+                fileName: result.fileName,
+                mimeType: result.mimeType,
+              }),
+            });
+            if (!response.avatar) {
+              throw new Error('Avatar upload failed');
+            }
+            setAvatarSelection({
+              kind: 'custom',
+              avatarId: response.avatar.avatarId,
+            });
+            setCustomAvatarPreview(response.avatar.thumbSrc);
+            setCropFile(null);
+          }}
         />
       )}
     </div>

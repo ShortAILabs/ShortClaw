@@ -36,7 +36,7 @@ export function Avatar({ src, name = '', size = 32, className }: AvatarProps) {
         <img
           src={src}
           alt={name}
-          className="h-full w-full object-cover"
+          className="block h-full w-full rounded-full object-cover"
           onError={(e) => {
             // Hide broken image, show initials fallback
             (e.target as HTMLImageElement).style.display = 'none';

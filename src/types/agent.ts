@@ -1,3 +1,10 @@
+export interface AgentAvatarSummary {
+  kind: 'default' | 'custom';
+  avatarId: string;
+  src: string;
+  thumbSrc: string;
+}
+
 export interface AgentSummary {
   id: string;
   name: string;
@@ -10,6 +17,7 @@ export interface AgentSummary {
   agentDir: string;
   mainSessionKey: string;
   channelTypes: string[];
+  avatar: AgentAvatarSummary | null;
 }
 
 export interface AgentsSnapshot {

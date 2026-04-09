@@ -1,11 +1,13 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Agents } from '../../src/pages/Agents/index';
 
 const hostApiFetchMock = vi.fn();
 const subscribeHostEventMock = vi.fn();
 const fetchAgentsMock = vi.fn();
+const fetchDefaultAvatarOptionsMock = vi.fn();
+const createAgentMock = vi.fn();
 const updateAgentMock = vi.fn();
 const updateAgentModelMock = vi.fn();
 const refreshProviderSnapshotMock = vi.fn();
@@ -16,6 +18,8 @@ const { gatewayState, agentsState, providersState } = vi.hoisted(() => ({
   },
   agentsState: {
     agents: [] as Array<Record<string, unknown>>,
+    defaultAvatarOptions: [] as Array<Record<string, unknown>>,
+    recommendedDefaultAvatarId: null as string | null,
     defaultModelRef: null as string | null,
     loading: false,
     error: null as string | null,
@@ -35,17 +39,19 @@ vi.mock('@/stores/gateway', () => ({
 vi.mock('@/stores/agents', () => ({
   useAgentsStore: (selector?: (state: typeof agentsState & {
     fetchAgents: typeof fetchAgentsMock;
+    fetchDefaultAvatarOptions: typeof fetchDefaultAvatarOptionsMock;
     updateAgent: typeof updateAgentMock;
     updateAgentModel: typeof updateAgentModelMock;
-    createAgent: ReturnType<typeof vi.fn>;
+    createAgent: typeof createAgentMock;
     deleteAgent: ReturnType<typeof vi.fn>;
   }) => unknown) => {
     const state = {
       ...agentsState,
       fetchAgents: fetchAgentsMock,
+      fetchDefaultAvatarOptions: fetchDefaultAvatarOptionsMock,
       updateAgent: updateAgentMock,
       updateAgentModel: updateAgentModelMock,
-      createAgent: vi.fn(),
+      createAgent: createAgentMock,
       deleteAgent: vi.fn(),
     };
     return typeof selector === 'function' ? selector(state) : state;
@@ -91,12 +97,16 @@ describe('Agents page status refresh', () => {
     vi.clearAllMocks();
     gatewayState.status = { state: 'running', port: 18789 };
     agentsState.agents = [];
+    agentsState.defaultAvatarOptions = [];
+    agentsState.recommendedDefaultAvatarId = null;
     agentsState.defaultModelRef = null;
     providersState.accounts = [];
     providersState.statuses = [];
     providersState.vendors = [];
     providersState.defaultAccountId = '';
     fetchAgentsMock.mockResolvedValue(undefined);
+    fetchDefaultAvatarOptionsMock.mockResolvedValue(undefined);
+    createAgentMock.mockResolvedValue(undefined);
     updateAgentMock.mockResolvedValue(undefined);
     updateAgentModelMock.mockResolvedValue(undefined);
     refreshProviderSnapshotMock.mockResolvedValue(undefined);
@@ -119,6 +129,7 @@ describe('Agents page status refresh', () => {
 
     await waitFor(() => {
       expect(fetchAgentsMock).toHaveBeenCalledTimes(1);
+      expect(fetchDefaultAvatarOptionsMock).toHaveBeenCalledTimes(1);
       expect(hostApiFetchMock).toHaveBeenCalledWith('/api/channels/accounts');
     });
     expect(subscribeHostEventMock).toHaveBeenCalledWith('gateway:channel-status', expect.any(Function));
@@ -140,6 +151,7 @@ describe('Agents page status refresh', () => {
 
     await waitFor(() => {
       expect(fetchAgentsMock).toHaveBeenCalledTimes(1);
+      expect(fetchDefaultAvatarOptionsMock).toHaveBeenCalledTimes(1);
       expect(hostApiFetchMock).toHaveBeenCalledWith('/api/channels/accounts');
     });
 
@@ -168,6 +180,12 @@ describe('Agents page status refresh', () => {
         agentDir: '~/.openclaw/agents/main/agent',
         mainSessionKey: 'agent:main:desk',
         channelTypes: [],
+        avatar: {
+          kind: 'default',
+          avatarId: 'lobster-1',
+          src: 'data:image/webp;base64,aaa',
+          thumbSrc: 'data:image/webp;base64,bbb',
+        },
       },
     ];
     agentsState.defaultModelRef = 'openrouter/anthropic/claude-opus-4.6';
@@ -200,7 +218,8 @@ describe('Agents page status refresh', () => {
 
     const useDefaultButton = await screen.findByRole('button', { name: 'settingsDialog.useDefaultModel' });
     const modelIdInput = screen.getByLabelText('settingsDialog.modelIdLabel');
-    const saveButton = screen.getByRole('button', { name: 'common:actions.save' });
+    const modelModal = modelIdInput.closest('.fixed') as HTMLElement;
+    const saveButton = within(modelModal).getByRole('button', { name: 'common:actions.save' });
 
     expect(useDefaultButton).toBeDisabled();
 
@@ -213,5 +232,91 @@ describe('Agents page status refresh', () => {
     expect(updateAgentModelMock).not.toHaveBeenCalled();
     expect((modelIdInput as HTMLInputElement).value).toBe('anthropic/claude-opus-4.6');
     expect(useDefaultButton).toBeDisabled();
+  });
+
+  it('preselects the recommended default avatar in the create dialog', async () => {
+    agentsState.defaultAvatarOptions = [
+      {
+        kind: 'default',
+        avatarId: 'lobster-1',
+        src: 'data:image/webp;base64,aaa',
+        thumbSrc: 'data:image/webp;base64,bbb',
+      },
+      {
+        kind: 'default',
+        avatarId: 'lobster-2',
+        src: 'data:image/webp;base64,ccc',
+        thumbSrc: 'data:image/webp;base64,ddd',
+      },
+    ];
+    agentsState.recommendedDefaultAvatarId = 'lobster-2';
+
+    render(<Agents />);
+
+    await waitFor(() => {
+      expect(fetchDefaultAvatarOptionsMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'addAgent' }));
+
+    expect(await screen.findByRole('radio', { name: /default avatar 2 lobster-2/i })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('saves name and avatar together in the settings modal', async () => {
+    agentsState.defaultAvatarOptions = [
+      {
+        kind: 'default',
+        avatarId: 'lobster-1',
+        src: 'data:image/webp;base64,aaa',
+        thumbSrc: 'data:image/webp;base64,bbb',
+      },
+      {
+        kind: 'default',
+        avatarId: 'lobster-2',
+        src: 'data:image/webp;base64,ccc',
+        thumbSrc: 'data:image/webp;base64,ddd',
+      },
+    ];
+    agentsState.agents = [
+      {
+        id: 'main',
+        name: 'Main',
+        isDefault: true,
+        modelDisplay: 'claude-opus-4.6',
+        modelRef: 'openrouter/anthropic/claude-opus-4.6',
+        overrideModelRef: null,
+        inheritedModel: true,
+        workspace: '~/.openclaw/workspace',
+        agentDir: '~/.openclaw/agents/main/agent',
+        mainSessionKey: 'agent:main:desk',
+        channelTypes: [],
+        avatar: {
+          kind: 'default',
+          avatarId: 'lobster-1',
+          src: 'data:image/webp;base64,aaa',
+          thumbSrc: 'data:image/webp;base64,bbb',
+        },
+      },
+    ];
+
+    render(<Agents />);
+
+    await waitFor(() => {
+      expect(fetchAgentsMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByTitle('settings'));
+    fireEvent.change(screen.getByLabelText('settingsDialog.nameLabel'), {
+      target: { value: 'Main Desk' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /default avatar 2 lobster-2/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'common:actions.save' }));
+
+    await waitFor(() => {
+      expect(updateAgentMock).toHaveBeenCalledWith('main', {
+        name: 'Main Desk',
+        avatarSelection: { kind: 'default', avatarId: 'lobster-2' },
+      });
+    });
   });
 });

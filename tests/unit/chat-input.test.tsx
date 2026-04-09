@@ -113,6 +113,9 @@ describe('ChatInput agent targeting', () => {
       {
         id: 'research',
         name: 'Research',
+        avatar: {
+          src: 'data:image/webp;base64,research-avatar',
+        },
         isDefault: false,
         modelDisplay: 'Claude',
         inheritedModel: false,
@@ -126,6 +129,7 @@ describe('ChatInput agent targeting', () => {
     render(<ChatInput onSend={onSend} />);
 
     fireEvent.click(screen.getByTitle('Choose agent'));
+    expect(screen.getByAltText('Research')).toHaveAttribute('src', 'data:image/webp;base64,research-avatar');
     fireEvent.click(screen.getByText('Research'));
 
     expect(screen.getByText('@Research')).toBeInTheDocument();

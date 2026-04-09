@@ -39,6 +39,7 @@
         "build:vite": "vite build",
         "bundle:openclaw-plugins": "zx scripts/bundle-openclaw-plugins.mjs",
         "bundle:preinstalled-skills": "zx scripts/bundle-preinstalled-skills.mjs",
+        "avatars:import-defaults": "zx scripts/import-default-agent-avatars.mjs",
         "lint": "eslint . --fix",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",

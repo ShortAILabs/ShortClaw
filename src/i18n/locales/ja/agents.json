@@ -17,6 +17,9 @@
         "description": "名前だけで新しい Agent を作成できます。メイン Agent のワークスペース初期ファイルを引き継ぐかどうかも選択できます。",
         "nameLabel": "Agent 名",
         "namePlaceholder": "Coding Helper",
+        "avatarLabel": "Agent アバター",
+        "avatarDescription": "デフォルトのロブスター画像を選ぶか、独自画像をアップロードできます。",
+        "customAvatar": "カスタム",
         "inheritWorkspaceLabel": "メイン Agent のワークスペースを引き継ぐ",
         "inheritWorkspaceDescription": "SOUL.md、AGENTS.md などの初期ファイルをコピーします"
     },
@@ -28,6 +31,9 @@
         "title": "{{name}} Settings",
         "description": "Agent 名を更新し、この Agent に属する Channel を管理します。",
         "nameLabel": "Agent 名",
+        "avatarLabel": "Agent アバター",
+        "avatarDescription": "名前とアバターをまとめて保存します。",
+        "identityDescription": "この見た目はチャット返信とセッション履歴に表示されます。",
         "agentIdLabel": "Agent ID",
         "modelLabel": "Model",
         "modelOverrideLabel": "モデル上書き",
@@ -70,5 +76,13 @@
         "channelAssignFailed": "Channel の割り当てに失敗しました: {{error}}",
         "channelRemoved": "{{channel}} を削除しました",
         "channelRemoveFailed": "Channel の削除に失敗しました: {{error}}"
+    },
+    "cropDialog": {
+        "title": "アバターを切り抜く",
+        "description": "画像をドラッグして位置を調整し、ズームで円形アバターを切り抜きます。",
+        "zoomLabel": "ズーム",
+        "reselect": "別の画像を選ぶ",
+        "apply": "アバターを適用",
+        "dragHint": "画像をドラッグして切り抜き位置を調整してください。"
     }
 }

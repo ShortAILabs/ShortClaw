@@ -157,7 +157,8 @@
 }
 
 .pixel-agent-chip-state {
-  opacity: 0.82;
+  opacity: 0.96;
+  font-weight: 600;
 }
 
 .pixel-agent-chip-working {
@@ -185,8 +186,8 @@
 }
 
 .light .pixel-agent-chip-idle {
-  background: rgba(234, 179, 8, 0.18);
-  border-color: rgba(202, 138, 4, 0.5);
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(217, 119, 6, 0.52);
   color: #92400e;
 }
 

@@ -1,0 +1,192 @@
+<style>
+  .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+  .card { overflow: hidden; }
+  .card-body p { line-height: 1.5; }
+  .mock-shell { background: #f6f2e9; border: 1px solid rgba(25,25,25,.08); border-radius: 22px; padding: 14px; color: #231f18; }
+  .mock-window { border-radius: 18px; background: rgba(255,255,255,.86); border: 1px solid rgba(25,25,25,.08); overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.08); }
+  .mock-topbar { display:flex; justify-content:space-between; align-items:center; padding: 10px 14px; border-bottom: 1px solid rgba(25,25,25,.08); font-size: 12px; color: rgba(35,31,24,.7); background: rgba(255,255,255,.7); }
+  .mock-body { padding: 14px; display:flex; flex-direction:column; gap: 12px; }
+  .mock-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: rgba(35,31,24,.55); }
+  .mock-input-strong { background: #fff; border: 1px solid rgba(25,25,25,.12); border-radius: 14px; padding: 12px 14px; font-size: 13px; }
+  .avatar-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .avatar-chip { width: 52px; height: 52px; border-radius: 999px; border: 2px solid rgba(25,25,25,.08); background: radial-gradient(circle at 30% 30%, #ffcf95 0, #f57a4c 48%, #962f1f 100%); position:relative; box-shadow: inset 0 2px 6px rgba(255,255,255,.35); }
+  .avatar-chip::before { content:""; position:absolute; inset: 10px 14px 16px 14px; border-radius: 50% 50% 42% 42%; background: rgba(255,248,236,.92); }
+  .avatar-chip::after { content:""; position:absolute; width: 8px; height: 8px; border-radius: 999px; background:#24180f; top: 19px; left: 17px; box-shadow: 15px 0 0 #24180f; }
+  .avatar-chip.active { border-color: #111; transform: scale(1.02); }
+  .avatar-chip.alt-2 { background: radial-gradient(circle at 30% 30%, #ffd7c0 0, #ff8a64 42%, #91392f 100%); }
+  .avatar-chip.alt-3 { background: radial-gradient(circle at 30% 30%, #ffe18e 0, #ff9e49 42%, #8f2d20 100%); }
+  .avatar-chip.alt-4 { background: radial-gradient(circle at 30% 30%, #ffc5df 0, #ff7a9d 42%, #8f2847 100%); }
+  .avatar-chip.alt-5 { background: radial-gradient(circle at 30% 30%, #c8f0ff 0, #68b7ff 45%, #25508f 100%); }
+  .avatar-chip.alt-6 { background: radial-gradient(circle at 30% 30%, #d7ffd5 0, #76d27c 45%, #2d7245 100%); }
+  .upload-tile { width: 52px; height: 52px; border-radius: 999px; border: 1.5px dashed rgba(25,25,25,.22); display:flex; align-items:center; justify-content:center; font-size: 21px; color: rgba(35,31,24,.65); background: rgba(255,255,255,.7); }
+  .stack { display:flex; flex-direction:column; gap:10px; }
+  .hero-avatar { width: 84px; height: 84px; border-radius: 999px; background: radial-gradient(circle at 30% 30%, #ffcf95 0, #f57a4c 48%, #962f1f 100%); position:relative; margin: 0 auto; box-shadow: 0 14px 28px rgba(149, 55, 24, .22); }
+  .hero-avatar::before { content:""; position:absolute; inset: 18px 22px 24px 22px; border-radius: 50% 50% 42% 42%; background: rgba(255,248,236,.95); }
+  .hero-avatar::after { content:""; position:absolute; width: 10px; height: 10px; border-radius: 999px; background:#24180f; top: 28px; left: 26px; box-shadow: 22px 0 0 #24180f; }
+  .segmented { display:flex; gap:8px; }
+  .segmented span { font-size: 11px; padding: 7px 10px; border-radius: 999px; background: rgba(25,25,25,.05); color: rgba(35,31,24,.72); }
+  .segmented span.active { background: #111; color: #fff; }
+  .preview-row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mini-chat { border-radius: 16px; background: #fff; border: 1px solid rgba(25,25,25,.08); padding: 10px; display:flex; flex-direction:column; gap:10px; min-height: 188px; }
+  .session-list { display:flex; flex-direction:column; gap:8px; }
+  .session-item { display:flex; align-items:center; gap:10px; background: rgba(25,25,25,.04); border-radius: 14px; padding: 9px 10px; }
+  .mini-avatar { width: 28px; height: 28px; border-radius: 999px; background: radial-gradient(circle at 30% 30%, #ffcf95 0, #f57a4c 48%, #962f1f 100%); flex: none; position: relative; }
+  .mini-avatar::before { content:""; position:absolute; inset: 6px 8px 9px 8px; border-radius: 50%; background: rgba(255,248,236,.95); }
+  .mini-bubble-row { display:flex; gap:9px; align-items:flex-start; }
+  .mini-bubble { background: rgba(25,25,25,.05); border-radius: 16px; padding: 10px 12px; font-size: 12px; line-height: 1.5; }
+  .agent-sheet { background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78)); border: 1px solid rgba(25,25,25,.08); border-radius: 18px; padding: 12px; display:flex; flex-direction:column; gap: 12px; }
+  .agent-header { display:flex; align-items:center; gap:12px; }
+  .agent-meta { display:flex; flex-direction:column; gap:3px; }
+  .muted { color: rgba(35,31,24,.62); font-size: 12px; }
+</style>
+
+<h2>Agent 头像与命名流程</h2>
+<p class="subtitle">对比 3 种适合 ShortClaw 的交互方向。我推荐 B：大头像主导 + 预设与自定义并列，最符合现在主流 AI 产品的创建与编辑心智。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-shell">
+        <div class="mock-window">
+          <div class="mock-topbar">
+            <span>A · Compact Picker</span>
+            <span>最快接入</span>
+          </div>
+          <div class="mock-body">
+            <div class="stack">
+              <div class="mock-label">Agent 名称</div>
+              <div class="mock-input-strong">Code Lobster</div>
+            </div>
+            <div class="stack">
+              <div class="mock-label">Agent 头像</div>
+              <div class="avatar-row">
+                <div class="avatar-chip active"></div>
+                <div class="avatar-chip alt-2"></div>
+                <div class="avatar-chip alt-3"></div>
+                <div class="avatar-chip alt-4"></div>
+                <div class="upload-tile">+</div>
+              </div>
+            </div>
+            <div class="preview-row">
+              <div class="mini-chat">
+                <div class="mock-label">聊天消息</div>
+                <div class="mini-bubble-row">
+                  <div class="mini-avatar"></div>
+                  <div class="mini-bubble">I reviewed the repo and found two safe changes.</div>
+                </div>
+              </div>
+              <div class="mini-chat">
+                <div class="mock-label">会话列表</div>
+                <div class="session-list">
+                  <div class="session-item"><div class="mini-avatar"></div><div>Code Lobster</div></div>
+                  <div class="session-item"><div class="mini-avatar" style="background:radial-gradient(circle at 30% 30%, #c8f0ff 0, #68b7ff 45%, #25508f 100%);"></div><div>Design Lobster</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 紧凑表单型</h3>
+      <p>优点是改动小、上手快。缺点是头像不够“主角”，自定义上传和裁剪的状态承接偏弱。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-shell">
+        <div class="mock-window">
+          <div class="mock-topbar">
+            <span>B · Identity First</span>
+            <span>推荐</span>
+          </div>
+          <div class="mock-body">
+            <div class="hero-avatar"></div>
+            <div class="segmented">
+              <span class="active">默认头像</span>
+              <span>自定义上传</span>
+            </div>
+            <div class="stack">
+              <div class="mock-label">Agent 名称</div>
+              <div class="mock-input-strong">Code Lobster</div>
+            </div>
+            <div class="avatar-row" style="justify-content:center;">
+              <div class="avatar-chip active"></div>
+              <div class="avatar-chip alt-2"></div>
+              <div class="avatar-chip alt-3"></div>
+              <div class="avatar-chip alt-4"></div>
+              <div class="avatar-chip alt-5"></div>
+              <div class="avatar-chip alt-6"></div>
+              <div class="upload-tile">+</div>
+            </div>
+            <div class="preview-row">
+              <div class="agent-sheet">
+                <div class="agent-header">
+                  <div class="mini-avatar" style="width:40px;height:40px;"></div>
+                  <div class="agent-meta">
+                    <strong>Code Lobster</strong>
+                    <span class="muted">可随时重命名和换头像</span>
+                  </div>
+                </div>
+                <div class="mock-input-strong" style="font-size:12px;">名称、头像、模型设置在同一区完成</div>
+              </div>
+              <div class="mini-chat">
+                <div class="mock-label">会话与消息联动</div>
+                <div class="session-item"><div class="mini-avatar"></div><div>Fix auth bug</div></div>
+                <div class="mini-bubble-row">
+                  <div class="mini-avatar"></div>
+                  <div class="mini-bubble">I'll update the route and add a regression test.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 身份优先型</h3>
+      <p>先建立“这个 Agent 长什么样”，再填名字。视觉重心清晰，适合默认头像轮换、自定义上传、裁剪预览和 Agent 设置页联动。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-shell">
+        <div class="mock-window">
+          <div class="mock-topbar">
+            <span>C · Split Editor</span>
+            <span>更强控制</span>
+          </div>
+          <div class="mock-body">
+            <div class="preview-row" style="grid-template-columns: 108px 1fr;">
+              <div class="stack" style="align-items:center; justify-content:center;">
+                <div class="hero-avatar" style="width:72px;height:72px;"></div>
+                <div class="upload-tile" style="width:36px;height:36px;font-size:17px;">+</div>
+              </div>
+              <div class="stack">
+                <div class="mock-label">Agent 名称</div>
+                <div class="mock-input-strong">Code Lobster</div>
+                <div class="mock-label">默认头像库</div>
+                <div class="avatar-row">
+                  <div class="avatar-chip active"></div>
+                  <div class="avatar-chip alt-2"></div>
+                  <div class="avatar-chip alt-3"></div>
+                  <div class="avatar-chip alt-4"></div>
+                </div>
+              </div>
+            </div>
+            <div class="agent-sheet">
+              <div class="mock-label">Agent 页编辑区</div>
+              <div class="mock-input-strong" style="font-size:12px;">���侧身份栏 + 右侧配置内容，适合未来再扩展 personality / instructions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 双栏编辑型</h3>
+      <p>可扩展性最好，但对当前需求略重，首次创建的心智不如 B 直接，移动端也更容易压缩变形。</p>
+    </div>
+  </div>
+</div>

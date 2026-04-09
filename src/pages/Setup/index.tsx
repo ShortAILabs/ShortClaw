@@ -110,7 +110,7 @@ import {
   hasConfiguredCredentials,
   pickPreferredAccount,
 } from '@/lib/provider-accounts';
-import shortclawIcon from '@/assets/logo.svg';
+import shortclawIcon from '@/assets/logo-mirrored.webp';
 
 // Use the shared provider registry for setup providers
 const providers = SETUP_PROVIDERS;

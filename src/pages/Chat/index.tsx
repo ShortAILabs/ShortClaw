@@ -4,11 +4,12 @@
  * via gateway:rpc IPC. Session selector, thinking toggle, and refresh
  * are in the toolbar; messages render with markdown + streaming.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
+import { Avatar } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -18,6 +19,12 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useStickToBottomInstant } from '@/hooks/use-stick-to-bottom-instant';
 import { useMinLoading } from '@/hooks/use-min-loading';
+
+function getAgentIdFromSessionKey(sessionKey: string): string {
+  if (!sessionKey.startsWith('agent:')) return 'main';
+  const [, agentId] = sessionKey.split(':');
+  return agentId || 'main';
+}
 
 export function Chat() {
   const { t } = useTranslation('chat');
@@ -36,6 +43,7 @@ export function Chat() {
   const sendMessage = useChatStore((s) => s.sendMessage);
   const abortRun = useChatStore((s) => s.abortRun);
   const clearError = useChatStore((s) => s.clearError);
+  const agents = useAgentsStore((s) => s.agents);
   const fetchAgents = useAgentsStore((s) => s.fetchAgents);
 
   const cleanupEmptySession = useChatStore((s) => s.cleanupEmptySession);
@@ -43,6 +51,13 @@ export function Chat() {
   const [streamingTimestamp, setStreamingTimestamp] = useState<number>(0);
   const minLoading = useMinLoading(loading && messages.length > 0);
   const { contentRef, scrollRef } = useStickToBottomInstant(currentSessionKey);
+  const currentAgentId = useMemo(() => getAgentIdFromSessionKey(currentSessionKey), [currentSessionKey]);
+  const currentAgent = useMemo(
+    () => agents.find((agent) => agent.id === currentAgentId) ?? agents.find((agent) => agent.isDefault) ?? null,
+    [agents, currentAgentId],
+  );
+  const assistantAvatarSrc = currentAgent?.avatar?.thumbSrc ?? currentAgent?.avatar?.src ?? null;
+  const assistantName = currentAgent?.name ?? 'Assistant';
 
   // Load data when gateway is running.
   // When the store already holds messages for this session (i.e. the user
@@ -109,6 +124,8 @@ export function Chat() {
                   key={msg.id || `msg-${idx}`}
                   message={msg}
                   showThinking={showThinking}
+                  assistantAvatarSrc={assistantAvatarSrc}
+                  assistantName={assistantName}
                 />
               ))}
 
@@ -128,6 +145,8 @@ export function Chat() {
                         timestamp: streamingTimestamp,
                       }) as RawMessage}
                   showThinking={showThinking}
+                  assistantAvatarSrc={assistantAvatarSrc}
+                  assistantName={assistantName}
                   isStreaming
                   streamingTools={streamingTools}
                 />
@@ -140,7 +159,7 @@ export function Chat() {
 
               {/* Typing indicator when sending but no stream content yet */}
               {sending && !pendingFinal && !hasAnyStreamContent && (
-                <TypingIndicator />
+                <TypingIndicator assistantAvatarSrc={assistantAvatarSrc} assistantName={assistantName} />
               )}
             </>
           )}
@@ -218,12 +237,21 @@ function WelcomeScreen() {
 
 // ── Typing Indicator ────────────────────────────────────────────
 
-function TypingIndicator() {
+function TypingIndicator({
+  assistantAvatarSrc,
+  assistantName,
+}: {
+  assistantAvatarSrc?: string | null;
+  assistantName?: string;
+}) {
   return (
     <div className="flex gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-black/5 dark:bg-white/5 text-foreground">
-        <Sparkles className="h-4 w-4" />
-      </div>
+      <Avatar
+        src={assistantAvatarSrc}
+        name={assistantName || 'Assistant'}
+        size={32}
+        className="mt-1 bg-black/5 dark:bg-white/5 text-foreground"
+      />
       <div className="bg-black/5 dark:bg-white/5 text-foreground rounded-2xl px-4 py-3">
         <div className="flex gap-1">
           <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

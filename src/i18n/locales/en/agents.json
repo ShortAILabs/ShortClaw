@@ -17,6 +17,9 @@
         "description": "Create a new agent by name. You can optionally inherit the main agent's workspace bootstrap files.",
         "nameLabel": "Agent Name",
         "namePlaceholder": "Coding Helper",
+        "avatarLabel": "Agent Avatar",
+        "avatarDescription": "Pick a default lobster avatar or upload a custom one.",
+        "customAvatar": "Custom",
         "inheritWorkspaceLabel": "Inherit main agent workspace",
         "inheritWorkspaceDescription": "Copy SOUL.md, AGENTS.md, etc. from the main agent"
     },
@@ -28,6 +31,9 @@
         "title": "{{name}} Settings",
         "description": "Update the agent name and manage which channels belong to this agent.",
         "nameLabel": "Agent Name",
+        "avatarLabel": "Agent Avatar",
+        "avatarDescription": "Change the agent name and avatar together in one save.",
+        "identityDescription": "This identity appears in chat replies and session history.",
         "agentIdLabel": "Agent ID",
         "modelLabel": "Model",
         "modelOverrideLabel": "Model Override",
@@ -70,5 +76,13 @@
         "channelAssignFailed": "Failed to assign channel: {{error}}",
         "channelRemoved": "{{channel}} removed",
         "channelRemoveFailed": "Failed to remove channel: {{error}}"
+    },
+    "cropDialog": {
+        "title": "Crop Avatar",
+        "description": "Drag to reposition the image and adjust zoom for a circular avatar.",
+        "zoomLabel": "Zoom",
+        "reselect": "Choose another image",
+        "apply": "Apply avatar",
+        "dragHint": "Drag the image to adjust the crop."
     }
 }
