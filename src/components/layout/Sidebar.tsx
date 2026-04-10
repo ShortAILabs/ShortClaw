@@ -43,6 +43,7 @@ import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { useTranslation } from 'react-i18next';
 import logoImage from '@/assets/logo-mirrored.webp';
+import logoSvg from '@/assets/logo.svg';
 
 type SessionBucketKey =
   | 'today'
@@ -232,7 +233,7 @@ export function Sidebar() {
             name: agent.name,
             avatarSrc: agent.avatar?.thumbSrc ?? agent.avatar?.src ?? null,
           },
-        ]),
+        ])
       ),
     [agents]
   );
@@ -306,7 +307,7 @@ export function Sidebar() {
       >
         {!sidebarCollapsed && (
           <div className="flex items-center gap-2 px-2 overflow-hidden">
-            <img src={logoImage} alt="ShortClaw" className="h-5 w-auto shrink-0" />
+            <img src={logoSvg} alt="ShortClaw" className="h-7 w-auto shrink-0" />
             <span className="text-sm font-semibold truncate whitespace-nowrap text-foreground/90">
               ShortClaw
             </span>

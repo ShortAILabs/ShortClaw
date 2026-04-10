@@ -1,6 +1,6 @@
 {
     "name": "shortclaw",
-    "version": "0.3.8",
+    "version": "0.3.9",
     "pnpm": {
         "onlyBuiltDependencies": [
             "@discordjs/opus",
@@ -76,6 +76,7 @@
         "ms": "^2.1.3",
         "node-machine-id": "^1.1.12",
         "posthog-node": "^5.28.0",
+        "sharp": "^0.34.5",
         "ws": "^8.19.0"
     },
     "devDependencies": {
@@ -129,7 +130,6 @@
         "react-markdown": "^10.1.0",
         "react-router-dom": "^7.13.0",
         "remark-gfm": "^4.0.1",
-        "sharp": "^0.34.5",
         "sonner": "^2.0.7",
         "tailwind-merge": "^3.5.0",
         "tailwindcss": "^3.4.19",
