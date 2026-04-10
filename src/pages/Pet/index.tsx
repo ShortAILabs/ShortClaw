@@ -11,9 +11,8 @@ import { getPetCopy } from '../../../shared/pet-copy';
 
 const SPRITE_COLUMNS = 6;
 const SPRITE_RENDER_SIZE = 112;
+const PET_SPRITE_URL = './assets/pets/star-working-spritesheet-grid.png';
 const IDLE_FRAMES = [0, 1] as const;
-const WORKING_FRAMES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
-const ERROR_FRAMES = [4, 5] as const;
 const DRAG_THRESHOLD = 6;
 
 type DragSession = Readonly<{
@@ -25,7 +24,7 @@ type DragSession = Readonly<{
   moved: boolean;
 }>;
 
-function getFrameIndex(status: PetStateSnapshot['status'], tick: number): number {
+function getFrameIndex(_status: PetStateSnapshot['status'], tick: number): number {
   // switch (status) {
   //   case 'working':
   //     return WORKING_FRAMES[tick % WORKING_FRAMES.length];
@@ -107,7 +106,7 @@ export function Pet() {
     () => ({
       width: `${SPRITE_RENDER_SIZE}px`,
       height: `${SPRITE_RENDER_SIZE}px`,
-      backgroundImage: 'url(/assets/pets/star-working-spritesheet-grid.png)',
+      backgroundImage: `url(${PET_SPRITE_URL})`,
       backgroundRepeat: 'no-repeat',
       backgroundPosition: `${spritePositionX}px ${spritePositionY}px`,
       backgroundSize: `${SPRITE_COLUMNS * SPRITE_RENDER_SIZE}px auto`,
@@ -229,7 +228,7 @@ export function Pet() {
             }`}
           />
           <div className="pointer-events-none relative z-10">
-            <div style={spriteStyle} />
+            <div data-testid="pet-sprite" style={spriteStyle} />
           </div>
         </button>
       </div>

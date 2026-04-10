@@ -85,11 +85,31 @@ interface DefaultSkill {
 }
 
 const getDefaultSkills = (t: TFunction): DefaultSkill[] => [
-  { id: 'opencode', name: t('defaultSkills.opencode.name'), description: t('defaultSkills.opencode.description') },
-  { id: 'python-env', name: t('defaultSkills.python-env.name'), description: t('defaultSkills.python-env.description') },
-  { id: 'code-assist', name: t('defaultSkills.code-assist.name'), description: t('defaultSkills.code-assist.description') },
-  { id: 'file-tools', name: t('defaultSkills.file-tools.name'), description: t('defaultSkills.file-tools.description') },
-  { id: 'terminal', name: t('defaultSkills.terminal.name'), description: t('defaultSkills.terminal.description') },
+  {
+    id: 'opencode',
+    name: t('defaultSkills.opencode.name'),
+    description: t('defaultSkills.opencode.description'),
+  },
+  {
+    id: 'python-env',
+    name: t('defaultSkills.python-env.name'),
+    description: t('defaultSkills.python-env.description'),
+  },
+  {
+    id: 'code-assist',
+    name: t('defaultSkills.code-assist.name'),
+    description: t('defaultSkills.code-assist.description'),
+  },
+  {
+    id: 'file-tools',
+    name: t('defaultSkills.file-tools.name'),
+    description: t('defaultSkills.file-tools.description'),
+  },
+  {
+    id: 'terminal',
+    name: t('defaultSkills.terminal.name'),
+    description: t('defaultSkills.terminal.description'),
+  },
 ];
 
 import {
@@ -110,14 +130,12 @@ import {
   hasConfiguredCredentials,
   pickPreferredAccount,
 } from '@/lib/provider-accounts';
-import shortclawIcon from '@/assets/logo-mirrored.webp';
+import shortclawIcon from '@/assets/logo.svg';
 
 // Use the shared provider registry for setup providers
 const providers = SETUP_PROVIDERS;
 
-function getProtocolBaseUrlPlaceholder(
-  apiProtocol: ProviderAccount['apiProtocol'],
-): string {
+function getProtocolBaseUrlPlaceholder(apiProtocol: ProviderAccount['apiProtocol']): string {
   if (apiProtocol === 'anthropic-messages') {
     return 'https://api.example.com/anthropic';
   }
@@ -198,9 +216,11 @@ export function Setup() {
     }, 1000);
   }, []);
 
-
   return (
-    <div data-testid="setup-page" className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div
+      data-testid="setup-page"
+      className="flex h-screen flex-col overflow-hidden bg-background text-foreground"
+    >
       <TitleBar />
       <div className="flex-1 overflow-auto">
         {/* Progress Indicator */}
@@ -254,7 +274,9 @@ export function Setup() {
             {/* Step-specific content */}
             <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
               {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
-              {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} />}
+              {safeStepIndex === STEP.RUNTIME && (
+                <RuntimeContent onStatusChange={setRuntimeChecksPassed} />
+              )}
               {safeStepIndex === STEP.PROVIDER && (
                 <ProviderContent
                   providers={providers}
@@ -297,7 +319,11 @@ export function Setup() {
                       {t('nav.skipSetup')}
                     </Button>
                   )}
-                  <Button data-testid="setup-next-button" onClick={handleNext} disabled={!canProceed}>
+                  <Button
+                    data-testid="setup-next-button"
+                    onClick={handleNext}
+                    disabled={!canProceed}
+                  >
                     {isLastStep ? (
                       t('nav.getStarted')
                     ) : (
@@ -329,9 +355,7 @@ function WelcomeContent() {
         <img src={shortclawIcon} alt="ShortClaw" className="h-16 w-16" />
       </div>
       <h2 className="text-xl font-semibold">{t('welcome.title')}</h2>
-      <p className="text-muted-foreground">
-        {t('welcome.description')}
-      </p>
+      <p className="text-muted-foreground">{t('welcome.description')}</p>
 
       {/* Language Selector */}
       <div className="flex justify-center gap-2 py-2">
@@ -405,7 +429,7 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
 
     // Check OpenClaw package status
     try {
-      const openclawStatus = await invokeIpc('openclaw:status') as {
+      const openclawStatus = (await invokeIpc('openclaw:status')) as {
         packageExists: boolean;
         isBuilt: boolean;
         dir: string;
@@ -419,7 +443,7 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
           ...prev,
           openclaw: {
             status: 'error',
-            message: `OpenClaw package not found at: ${openclawStatus.dir}`
+            message: `OpenClaw package not found at: ${openclawStatus.dir}`,
           },
         }));
       } else if (!openclawStatus.isBuilt) {
@@ -427,7 +451,7 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
           ...prev,
           openclaw: {
             status: 'error',
-            message: 'OpenClaw package found but dist is missing'
+            message: 'OpenClaw package found but dist is missing',
           },
         }));
       } else {
@@ -436,7 +460,7 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
           ...prev,
           openclaw: {
             status: 'success',
-            message: `OpenClaw package ready${versionLabel}`
+            message: `OpenClaw package ready${versionLabel}`,
           },
         }));
       }
@@ -467,7 +491,10 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
         ...prev,
         gateway: {
           status: 'checking',
-          message: currentGateway.state === 'starting' ? t('runtime.status.checking') : 'Waiting for gateway...'
+          message:
+            currentGateway.state === 'starting'
+              ? t('runtime.status.checking')
+              : 'Waiting for gateway...',
         },
       }));
     }
@@ -479,9 +506,10 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
 
   // Update canProceed when gateway status changes
   useEffect(() => {
-    const allPassed = checks.nodejs.status === 'success'
-      && checks.openclaw.status === 'success'
-      && (checks.gateway.status === 'success' || gatewayStatus.state === 'running');
+    const allPassed =
+      checks.nodejs.status === 'success' &&
+      checks.openclaw.status === 'success' &&
+      (checks.gateway.status === 'success' || gatewayStatus.state === 'running');
     onStatusChange(allPassed);
   }, [checks, gatewayStatus, onStatusChange]);
 
@@ -490,7 +518,10 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
     if (gatewayStatus.state === 'running') {
       setChecks((prev) => ({
         ...prev,
-        gateway: { status: 'success', message: t('runtime.status.gatewayRunning', { port: gatewayStatus.port }) },
+        gateway: {
+          status: 'success',
+          message: t('runtime.status.gatewayRunning', { port: gatewayStatus.port }),
+        },
       }));
     } else if (gatewayStatus.state === 'error') {
       setChecks((prev) => ({
@@ -599,7 +630,9 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
         {isLong && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="cursor-pointer text-red-300 hover:text-red-200 font-medium">...</span>
+              <span className="cursor-pointer text-red-300 hover:text-red-200 font-medium">
+                ...
+              </span>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-sm whitespace-normal break-words text-xs">
               {message}
@@ -665,9 +698,7 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
             <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
             <div>
               <p className="font-medium text-red-400">{t('runtime.issue.title')}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('runtime.issue.desc')}
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{t('runtime.issue.desc')}</p>
             </div>
           </div>
         </div>
@@ -683,7 +714,12 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
                 <ExternalLink className="h-3 w-3 mr-1" />
                 {t('runtime.logs.openFolder')}
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowLogs(false)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setShowLogs(false)}
+              >
                 {t('runtime.logs.close')}
               </Button>
             </div>
@@ -722,7 +758,8 @@ function ProviderContent({
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [modelId, setModelId] = useState('');
-  const [apiProtocol, setApiProtocol] = useState<ProviderAccount['apiProtocol']>('openai-completions');
+  const [apiProtocol, setApiProtocol] =
+    useState<ProviderAccount['apiProtocol']>('openai-completions');
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const providerMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -731,16 +768,20 @@ function ProviderContent({
 
   // OAuth Flow State
   const [oauthFlowing, setOauthFlowing] = useState(false);
-  const [oauthData, setOauthData] = useState<{
-    mode: 'device';
-    verificationUri: string;
-    userCode: string;
-    expiresIn: number;
-  } | {
-    mode: 'manual';
-    authorizationUrl: string;
-    message?: string;
-  } | null>(null);
+  const [oauthData, setOauthData] = useState<
+    | {
+        mode: 'device';
+        verificationUri: string;
+        userCode: string;
+        expiresIn: number;
+      }
+    | {
+        mode: 'manual';
+        authorizationUrl: string;
+        message?: string;
+      }
+    | null
+  >(null);
   const [manualCodeInput, setManualCodeInput] = useState('');
   const [oauthError, setOauthError] = useState<string | null>(null);
   const pendingOAuthRef = useRef<{ accountId: string; label: string } | null>(null);
@@ -837,7 +878,7 @@ function ProviderContent({
       const accountId = buildProviderAccountId(
         selectedProvider as ProviderType,
         selectedAccountId,
-        snapshot.vendors,
+        snapshot.vendors
       );
       const label = selectedProviderData?.name || selectedProvider;
       pendingOAuthRef.current = { accountId, label };
@@ -883,21 +924,29 @@ function ProviderContent({
         const snapshot = await fetchProviderSnapshot();
         const statusMap = new Map(snapshot.statuses.map((status) => [status.id, status]));
         const setupProviderTypes = new Set<string>(providers.map((p) => p.id));
-        const setupCandidates = snapshot.accounts.filter((account) => setupProviderTypes.has(account.vendorId));
+        const setupCandidates = snapshot.accounts.filter((account) =>
+          setupProviderTypes.has(account.vendorId)
+        );
         const preferred =
-          (snapshot.defaultAccountId
-            && setupCandidates.find((account) => account.id === snapshot.defaultAccountId))
-          || setupCandidates.find((account) => hasConfiguredCredentials(account, statusMap.get(account.id)))
-          || setupCandidates[0];
+          (snapshot.defaultAccountId &&
+            setupCandidates.find((account) => account.id === snapshot.defaultAccountId)) ||
+          setupCandidates.find((account) =>
+            hasConfiguredCredentials(account, statusMap.get(account.id))
+          ) ||
+          setupCandidates[0];
         if (preferred && !cancelled) {
           onSelectProvider(preferred.vendorId);
           setSelectedAccountId(preferred.id);
           const typeInfo = providers.find((p) => p.id === preferred.vendorId);
           const requiresKey = typeInfo?.requiresApiKey ?? false;
-          onConfiguredChange(!requiresKey || hasConfiguredCredentials(preferred, statusMap.get(preferred.id)));
-          const storedKey = (await hostApiFetch<{ apiKey: string | null }>(
-            `/api/providers/${encodeURIComponent(preferred.id)}/api-key`,
-          )).apiKey;
+          onConfiguredChange(
+            !requiresKey || hasConfiguredCredentials(preferred, statusMap.get(preferred.id))
+          );
+          const storedKey = (
+            await hostApiFetch<{ apiKey: string | null }>(
+              `/api/providers/${encodeURIComponent(preferred.id)}/api-key`
+            )
+          ).apiKey;
           onApiKeyChange(storedKey || '');
         } else if (!cancelled) {
           onConfiguredChange(false);
@@ -909,7 +958,9 @@ function ProviderContent({
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [onApiKeyChange, onConfiguredChange, onSelectProvider, providers]);
 
   // When provider changes, load stored key + reset base URL
@@ -925,17 +976,21 @@ function ProviderContent({
           snapshot.accounts,
           snapshot.defaultAccountId,
           selectedProvider,
-          statusMap,
+          statusMap
         );
         const accountIdForLoad = preferredAccount?.id || selectedProvider;
         setSelectedAccountId(preferredAccount?.id || null);
 
-        const savedProvider = await hostApiFetch<{ baseUrl?: string; model?: string; apiProtocol?: ProviderAccount['apiProtocol'] } | null>(
-          `/api/providers/${encodeURIComponent(accountIdForLoad)}`,
-        );
-        const storedKey = (await hostApiFetch<{ apiKey: string | null }>(
-          `/api/providers/${encodeURIComponent(accountIdForLoad)}/api-key`,
-        )).apiKey;
+        const savedProvider = await hostApiFetch<{
+          baseUrl?: string;
+          model?: string;
+          apiProtocol?: ProviderAccount['apiProtocol'];
+        } | null>(`/api/providers/${encodeURIComponent(accountIdForLoad)}`);
+        const storedKey = (
+          await hostApiFetch<{ apiKey: string | null }>(
+            `/api/providers/${encodeURIComponent(accountIdForLoad)}/api-key`
+          )
+        ).apiKey;
         if (!cancelled) {
           onApiKeyChange(storedKey || '');
 
@@ -946,11 +1001,11 @@ function ProviderContent({
           setModelId(nextModelId);
           setApiProtocol(savedProvider?.apiProtocol || 'openai-completions');
           if (
-            selectedProvider === 'ark'
-            && info?.codePlanPresetBaseUrl
-            && info?.codePlanPresetModelId
-            && nextBaseUrl.trim() === info.codePlanPresetBaseUrl
-            && nextModelId.trim() === info.codePlanPresetModelId
+            selectedProvider === 'ark' &&
+            info?.codePlanPresetBaseUrl &&
+            info?.codePlanPresetModelId &&
+            nextBaseUrl.trim() === info.codePlanPresetBaseUrl &&
+            nextModelId.trim() === info.codePlanPresetModelId
           ) {
             setArkMode('codeplan');
           } else {
@@ -963,7 +1018,9 @@ function ProviderContent({
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [onApiKeyChange, selectedProvider, providers]);
 
   useEffect(() => {
@@ -991,20 +1048,22 @@ function ProviderContent({
 
   const selectedProviderData = providers.find((p) => p.id === selectedProvider);
   const providerDocsUrl = getProviderDocsUrl(selectedProviderData, i18n.language);
-  const effectiveProviderDocsUrl = selectedProvider === 'ark' && arkMode === 'codeplan'
-    ? (selectedProviderData?.codePlanDocsUrl || providerDocsUrl)
-    : providerDocsUrl;
+  const effectiveProviderDocsUrl =
+    selectedProvider === 'ark' && arkMode === 'codeplan'
+      ? selectedProviderData?.codePlanDocsUrl || providerDocsUrl
+      : providerDocsUrl;
   const selectedProviderIconUrl = selectedProviderData
     ? getProviderIconUrl(selectedProviderData.id)
     : undefined;
   const showBaseUrlField = selectedProviderData?.showBaseUrl ?? false;
   const showModelIdField = shouldShowProviderModelId(selectedProviderData, devModeUnlocked);
-  const codePlanPreset = selectedProviderData?.codePlanPresetBaseUrl && selectedProviderData?.codePlanPresetModelId
-    ? {
-      baseUrl: selectedProviderData.codePlanPresetBaseUrl,
-      modelId: selectedProviderData.codePlanPresetModelId,
-    }
-    : null;
+  const codePlanPreset =
+    selectedProviderData?.codePlanPresetBaseUrl && selectedProviderData?.codePlanPresetModelId
+      ? {
+          baseUrl: selectedProviderData.codePlanPresetBaseUrl,
+          modelId: selectedProviderData.codePlanPresetModelId,
+        }
+      : null;
   const requiresKey = selectedProviderData?.requiresApiKey ?? false;
   const isOAuth = selectedProviderData?.isOAuth ?? false;
   const supportsApiKey = selectedProviderData?.supportsApiKey ?? false;
@@ -1035,17 +1094,18 @@ function ProviderContent({
       // Validate key if the provider requires one and a key was entered
       const isApiKeyRequired = requiresKey || (supportsApiKey && authMode === 'apikey');
       if (isApiKeyRequired && apiKey) {
-        const result = await invokeIpc(
+        const result = (await invokeIpc(
           'provider:validateKey',
           selectedAccountId || selectedProvider,
           apiKey,
           {
             baseUrl: baseUrl.trim() || undefined,
-            apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
-              ? apiProtocol
-              : undefined,
+            apiProtocol:
+              selectedProvider === 'custom' || selectedProvider === 'ollama'
+                ? apiProtocol
+                : undefined,
           }
-        ) as { valid: boolean; error?: string };
+        )) as { valid: boolean; error?: string };
 
         setKeyValid(result.valid);
 
@@ -1067,23 +1127,21 @@ function ProviderContent({
       const accountIdForSave = buildProviderAccountId(
         selectedProvider as ProviderType,
         selectedAccountId,
-        snapshot.vendors,
+        snapshot.vendors
       );
 
       const effectiveApiKey = resolveProviderApiKeyForSave(selectedProvider, apiKey);
       const accountPayload: ProviderAccount = {
         id: accountIdForSave,
         vendorId: selectedProvider as ProviderType,
-        label: selectedProvider === 'custom'
-          ? t('settings:aiProviders.custom')
-          : (selectedProviderData?.name || selectedProvider),
-        authMode: selectedProvider === 'ollama'
-          ? 'local'
-          : 'api_key',
+        label:
+          selectedProvider === 'custom'
+            ? t('settings:aiProviders.custom')
+            : selectedProviderData?.name || selectedProvider,
+        authMode: selectedProvider === 'ollama' ? 'local' : 'api_key',
         baseUrl: baseUrl.trim() || undefined,
-        apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
-          ? apiProtocol
-          : undefined,
+        apiProtocol:
+          selectedProvider === 'custom' || selectedProvider === 'ollama' ? apiProtocol : undefined,
         model: effectiveModelId,
         enabled: true,
         isDefault: false,
@@ -1093,26 +1151,26 @@ function ProviderContent({
 
       const saveResult = selectedAccountId
         ? await hostApiFetch<{ success: boolean; error?: string }>(
-          `/api/provider-accounts/${encodeURIComponent(accountIdForSave)}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({
-              updates: {
-                label: accountPayload.label,
-                authMode: accountPayload.authMode,
-                baseUrl: accountPayload.baseUrl,
-                apiProtocol: accountPayload.apiProtocol,
-                model: accountPayload.model,
-                enabled: accountPayload.enabled,
-              },
-              apiKey: effectiveApiKey,
-            }),
-          },
-        )
+            `/api/provider-accounts/${encodeURIComponent(accountIdForSave)}`,
+            {
+              method: 'PUT',
+              body: JSON.stringify({
+                updates: {
+                  label: accountPayload.label,
+                  authMode: accountPayload.authMode,
+                  baseUrl: accountPayload.baseUrl,
+                  apiProtocol: accountPayload.apiProtocol,
+                  model: accountPayload.model,
+                  enabled: accountPayload.enabled,
+                },
+                apiKey: effectiveApiKey,
+              }),
+            }
+          )
         : await hostApiFetch<{ success: boolean; error?: string }>('/api/provider-accounts', {
-          method: 'POST',
-          body: JSON.stringify({ account: accountPayload, apiKey: effectiveApiKey }),
-        });
+            method: 'POST',
+            body: JSON.stringify({ account: accountPayload, apiKey: effectiveApiKey }),
+          });
 
       if (!saveResult.success) {
         throw new Error(saveResult.error || 'Failed to save provider config');
@@ -1123,7 +1181,7 @@ function ProviderContent({
         {
           method: 'PUT',
           body: JSON.stringify({ accountId: accountIdForSave }),
-        },
+        }
       );
 
       if (!defaultResult.success) {
@@ -1145,10 +1203,10 @@ function ProviderContent({
   // Can the user submit?
   const isApiKeyRequired = requiresKey || (supportsApiKey && authMode === 'apikey');
   const canSubmit =
-    selectedProvider
-    && (isApiKeyRequired ? apiKey.length > 0 : true)
-    && (showModelIdField ? modelId.trim().length > 0 : true)
-    && !useOAuthFlow;
+    selectedProvider &&
+    (isApiKeyRequired ? apiKey.length > 0 : true) &&
+    (showModelIdField ? modelId.trim().length > 0 : true) &&
+    !useOAuthFlow;
 
   const handleSelectProvider = (providerId: string) => {
     onSelectProvider(providerId);
@@ -1197,7 +1255,10 @@ function ProviderContent({
                   <img
                     src={selectedProviderIconUrl}
                     alt={selectedProviderData.name}
-                    className={cn('h-4 w-4 shrink-0', shouldInvertInDark(selectedProviderData.id) && 'dark:invert')}
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      shouldInvertInDark(selectedProviderData.id) && 'dark:invert'
+                    )}
                   />
                 ) : (
                   <span className="text-sm leading-none shrink-0">{selectedProviderData.icon}</span>
@@ -1205,13 +1266,20 @@ function ProviderContent({
               ) : (
                 <span className="text-xs text-muted-foreground shrink-0">—</span>
               )}
-              <span className={cn('truncate text-left', !selectedProvider && 'text-muted-foreground')}>
+              <span
+                className={cn('truncate text-left', !selectedProvider && 'text-muted-foreground')}
+              >
                 {selectedProviderData
                   ? `${selectedProviderData.id === 'custom' ? t('settings:aiProviders.custom') : selectedProviderData.name}${selectedProviderData.model ? ` — ${selectedProviderData.model}` : ''}`
                   : t('provider.selectPlaceholder')}
               </span>
             </div>
-            <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform', providerMenuOpen && 'rotate-180')} />
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform',
+                providerMenuOpen && 'rotate-180'
+              )}
+            />
           </button>
 
           {providerMenuOpen && (
@@ -1241,12 +1309,18 @@ function ProviderContent({
                         <img
                           src={iconUrl}
                           alt={p.name}
-                          className={cn('h-4 w-4 shrink-0', shouldInvertInDark(p.id) && 'dark:invert')}
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            shouldInvertInDark(p.id) && 'dark:invert'
+                          )}
                         />
                       ) : (
                         <span className="text-sm leading-none shrink-0">{p.icon}</span>
                       )}
-                      <span className="truncate">{p.id === 'custom' ? t('settings:aiProviders.custom') : p.name}{p.model ? ` — ${p.model}` : ''}</span>
+                      <span className="truncate">
+                        {p.id === 'custom' ? t('settings:aiProviders.custom') : p.name}
+                        {p.model ? ` — ${p.model}` : ''}
+                      </span>
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                   </button>
@@ -1320,9 +1394,7 @@ function ProviderContent({
                 </button>
               </div>
               {arkMode === 'codeplan' && (
-                <p className="text-xs text-muted-foreground">
-                  {t('provider.codePlanPresetDesc')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('provider.codePlanPresetDesc')}</p>
               )}
             </div>
           )}
@@ -1353,7 +1425,9 @@ function ProviderContent({
               <Input
                 id="modelId"
                 type="text"
-                placeholder={selectedProviderData?.modelIdPlaceholder || 'e.g. deepseek-ai/DeepSeek-V3'}
+                placeholder={
+                  selectedProviderData?.modelIdPlaceholder || 'e.g. deepseek-ai/DeepSeek-V3'
+                }
                 value={modelId}
                 onChange={(e) => {
                   setModelId(e.target.value);
@@ -1362,9 +1436,7 @@ function ProviderContent({
                 autoComplete="off"
                 className="bg-background border-input"
               />
-              <p className="text-xs text-muted-foreground">
-                {t('provider.modelIdDesc')}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('provider.modelIdDesc')}</p>
             </div>
           )}
 
@@ -1428,7 +1500,9 @@ function ProviderContent({
                 onClick={() => setAuthMode('oauth')}
                 className={cn(
                   'flex-1 py-2 px-3 transition-colors',
-                  authMode === 'oauth' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                  authMode === 'oauth'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted text-muted-foreground'
                 )}
               >
                 {t('settings:aiProviders.oauth.loginMode')}
@@ -1437,7 +1511,9 @@ function ProviderContent({
                 onClick={() => setAuthMode('apikey')}
                 className={cn(
                   'flex-1 py-2 px-3 transition-colors',
-                  authMode === 'apikey' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                  authMode === 'apikey'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted text-muted-foreground'
                 )}
               >
                 {t('settings:aiProviders.oauth.apikeyMode')}
@@ -1487,7 +1563,9 @@ function ProviderContent({
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {oauthFlowing ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Waiting...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Waiting...
+                    </>
                   ) : (
                     'Login with Browser'
                   )}
@@ -1506,28 +1584,38 @@ function ProviderContent({
                         <XCircle className="h-8 w-8 mx-auto" />
                         <p className="font-medium">Authentication Failed</p>
                         <p className="text-sm opacity-80">{oauthError}</p>
-                        <Button variant="outline" size="sm" onClick={handleCancelOAuth} className="mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCancelOAuth}
+                          className="mt-2"
+                        >
                           Try Again
                         </Button>
                       </div>
                     ) : !oauthData ? (
                       <div className="space-y-3 py-4">
                         <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                        <p className="text-sm text-muted-foreground animate-pulse">Requesting secure login code...</p>
+                        <p className="text-sm text-muted-foreground animate-pulse">
+                          Requesting secure login code...
+                        </p>
                       </div>
                     ) : oauthData.mode === 'manual' ? (
                       <div className="space-y-4 w-full">
                         <div className="space-y-1">
                           <h3 className="font-medium text-lg">Complete OpenAI Login</h3>
                           <p className="text-sm text-muted-foreground text-left mt-2">
-                            {oauthData.message || 'Open the authorization page, complete login, then paste the callback URL or code below.'}
+                            {oauthData.message ||
+                              'Open the authorization page, complete login, then paste the callback URL or code below.'}
                           </p>
                         </div>
 
                         <Button
                           variant="secondary"
                           className="w-full"
-                          onClick={() => invokeIpc('shell:openExternal', oauthData.authorizationUrl)}
+                          onClick={() =>
+                            invokeIpc('shell:openExternal', oauthData.authorizationUrl)
+                          }
                         >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Open Authorization Page
@@ -1547,7 +1635,12 @@ function ProviderContent({
                           Submit Code
                         </Button>
 
-                        <Button variant="ghost" size="sm" className="w-full mt-2" onClick={handleCancelOAuth}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={handleCancelOAuth}
+                        >
                           Cancel
                         </Button>
                       </div>
@@ -1592,7 +1685,12 @@ function ProviderContent({
                           <span>Waiting for approval in browser...</span>
                         </div>
 
-                        <Button variant="ghost" size="sm" className="w-full mt-2" onClick={handleCancelOAuth}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={handleCancelOAuth}
+                        >
                           Cancel
                         </Button>
                       </div>
@@ -1607,11 +1705,9 @@ function ProviderContent({
           <Button
             onClick={handleValidateAndSave}
             disabled={!canSubmit || validating}
-            className={cn("w-full", useOAuthFlow && "hidden")}
+            className={cn('w-full', useOAuthFlow && 'hidden')}
           >
-            {validating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
+            {validating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {requiresKey ? t('provider.validateSave') : t('provider.save')}
           </Button>
 
@@ -1621,9 +1717,7 @@ function ProviderContent({
             </p>
           )}
 
-          <p className="text-sm text-muted-foreground text-center">
-            {t('provider.storedLocally')}
-          </p>
+          <p className="text-sm text-muted-foreground text-center">{t('provider.storedLocally')}</p>
         </motion.div>
       )}
     </div>
@@ -1665,28 +1759,28 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
     const runRealInstall = async () => {
       try {
         // Step 1: Initialize all skills to 'installing' state for UI
-        setSkillStates(prev => prev.map(s => ({ ...s, status: 'installing' })));
+        setSkillStates((prev) => prev.map((s) => ({ ...s, status: 'installing' })));
         setOverallProgress(10);
 
         // Step 2: Call the backend to install uv and setup Python
-        const result = await invokeIpc('uv:install-all') as {
+        const result = (await invokeIpc('uv:install-all')) as {
           success: boolean;
-          error?: string
+          error?: string;
         };
 
         if (result.success) {
-          setSkillStates(prev => prev.map(s => ({ ...s, status: 'completed' })));
+          setSkillStates((prev) => prev.map((s) => ({ ...s, status: 'completed' })));
           setOverallProgress(100);
 
           await new Promise((resolve) => setTimeout(resolve, 800));
-          onComplete(skills.map(s => s.id));
+          onComplete(skills.map((s) => s.id));
         } else {
-          setSkillStates(prev => prev.map(s => ({ ...s, status: 'failed' })));
+          setSkillStates((prev) => prev.map((s) => ({ ...s, status: 'failed' })));
           setErrorMessage(result.error || 'Unknown error during installation');
           toast.error('Environment setup failed');
         }
       } catch (err) {
-        setSkillStates(prev => prev.map(s => ({ ...s, status: 'failed' })));
+        setSkillStates((prev) => prev.map((s) => ({ ...s, status: 'failed' })));
         setErrorMessage(String(err));
         toast.error('Installation error');
       }
@@ -1726,9 +1820,7 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
       <div className="text-center">
         <div className="text-4xl mb-4">⚙️</div>
         <h2 className="text-xl font-semibold mb-2">{t('installing.title')}</h2>
-        <p className="text-muted-foreground">
-          {t('installing.subtitle')}
-        </p>
+        <p className="text-muted-foreground">{t('installing.subtitle')}</p>
       </div>
 
       {/* Progress bar */}
@@ -1798,16 +1890,10 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
       )}
 
       {!errorMessage && (
-        <p className="text-sm text-slate-400 text-center">
-          {t('installing.wait')}
-        </p>
+        <p className="text-sm text-slate-400 text-center">{t('installing.wait')}</p>
       )}
       <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={onSkip}
-        >
+        <Button variant="ghost" className="text-muted-foreground" onClick={onSkip}>
           {t('installing.skip')}
         </Button>
       </div>
@@ -1833,15 +1919,30 @@ function CompleteContent({ selectedProvider, installedSkills }: CompleteContentP
     <div className="text-center space-y-6">
       <div className="text-6xl mb-4">🎉</div>
       <h2 className="text-xl font-semibold">{t('complete.title')}</h2>
-      <p className="text-muted-foreground">
-        {t('complete.subtitle')}
-      </p>
+      <p className="text-muted-foreground">{t('complete.subtitle')}</p>
 
       <div className="space-y-3 text-left max-w-md mx-auto">
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span>{t('complete.provider')}</span>
           <span className="text-green-400">
-            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${shouldInvertInDark(providerData.id) ? 'dark:invert' : ''}`} /> : providerData.icon} {providerData.id === 'custom' ? t('settings:aiProviders.custom') : providerData.name}</span> : '—'}
+            {providerData ? (
+              <span className="flex items-center gap-1.5">
+                {getProviderIconUrl(providerData.id) ? (
+                  <img
+                    src={getProviderIconUrl(providerData.id)}
+                    alt={providerData.name}
+                    className={`h-4 w-4 inline-block ${shouldInvertInDark(providerData.id) ? 'dark:invert' : ''}`}
+                  />
+                ) : (
+                  providerData.icon
+                )}{' '}
+                {providerData.id === 'custom'
+                  ? t('settings:aiProviders.custom')
+                  : providerData.name}
+              </span>
+            ) : (
+              '—'
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -1852,15 +1953,15 @@ function CompleteContent({ selectedProvider, installedSkills }: CompleteContentP
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span>{t('complete.gateway')}</span>
-          <span className={gatewayStatus.state === 'running' ? 'text-green-400' : 'text-yellow-400'}>
+          <span
+            className={gatewayStatus.state === 'running' ? 'text-green-400' : 'text-yellow-400'}
+          >
             {gatewayStatus.state === 'running' ? `✓ ${t('complete.running')}` : gatewayStatus.state}
           </span>
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        {t('complete.footer')}
-      </p>
+      <p className="text-sm text-muted-foreground">{t('complete.footer')}</p>
     </div>
   );
 }
